@@ -1,5 +1,7 @@
 <?php
 session_start();
 session_unset();
-header('location:MainPage.html');
+session_destroy();
+header("Location: MainPage.html");
+exit();
 ?>

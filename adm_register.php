@@ -1,11 +1,10 @@
 <?php
 @include "connect.php";
-error_reporting(0);
 
 if(isset($_POST["submit"])){
-    $fname = $_POST['fname'];
-    $teacherid = $_POST["teacherid"];
-    $email = $_POST["email"];
+    $fname = trim($_POST['fname']);
+    $teacherid = trim($_POST["teacherid"]);
+    $email = trim($_POST["email"]);
     $branch = $_POST["Branch"];
     $dob = $_POST["dob"];
     $gender = $_POST["gender"];
@@ -13,43 +12,34 @@ if(isset($_POST["submit"])){
     $password = $_POST["password"];
     $cpassword = $_POST["cpassword"];
 
-    // Check if user already exists
-    $select = "SELECT * FROM admin_register WHERE teacherid='$teacherid' && password='$password'";
-    $result = mysqli_query($con, $select);
-    if (mysqli_num_rows($result) > 0) {
-        echo '<script> 
-                      window.location.href="adm_register.php";  
-                      alert("User already exists!");
-                      </script>';
+    // Check if passwords match
+    if ($password !== $cpassword){
+        echo '<script>alert("Passwords do not match!"); window.location.href="adm_register.php";</script>';
+        exit();
+    }
+
+    // Check if teacher ID or email already exists
+    $stmt = $con->prepare("SELECT teacherid FROM admin_register WHERE teacherid = ? OR email = ?");
+    $stmt->bind_param("ss", $teacherid, $email);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if ($res->num_rows > 0) {
+        echo '<script>alert("Teacher ID or Email already registered!"); window.location.href="adm_register.php";</script>';
+        exit();
+    }
+
+    // Insert new teacher
+    $stmt = $con->prepare("INSERT INTO admin_register (fname, teacherid, email, branch, dob, gender, phone, password, cpassword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssssss", $fname, $teacherid, $email, $branch, $dob, $gender, $phone, $password, $cpassword);
+    if ($stmt->execute()) {
+        echo '<script>alert("Registration successful! Please login."); window.location.href="admin_login.php";</script>';
+        exit();
     } else {
-        // Check if passwords match
-        if ($password != $cpassword){
-            echo '<script> 
-                        window.location.href="adm_register.php";
-                        alert("Passwords do not match!");
-                      </script>';
-        } else {
-            // Insert new user
-            $insert = "INSERT INTO admin_register (fname, teacherid, email, branch, dob, gender, phone, password, cpassword) VALUES ('$fname', '$teacherid', '$email', '$branch', '$dob', '$gender', '$phone', '$password', '$cpassword')";
-            $result = mysqli_query($con, $insert);
-            if ($result) {
-                echo '<script> 
-                        window.location.href="admin_login.php";  
-                        alert("Registration successful!");
-                      </script>';
-            } else {
-                $error[] = "Failed to insert data: " . mysqli_error($con);
-            }
-        }
+        echo '<script>alert("Registration failed: ' . addslashes($con->error) . '"); window.location.href="adm_register.php";</script>';
+        exit();
     }
 }
-
-// // Debugging: Display any errors
-// if (isset($error)) {
-//     foreach($error as $err) {
-//         echo $err . "<br>";
-//     }
-// }
 ?>
 
 <!DOCTYPE html>
@@ -199,18 +189,17 @@ if(isset($_POST["submit"])){
     <input type="text"  name="phone" class="box" required>
    
     <div class="password-container">
-            <label>Password:</label>
-            <input type="password" name="password" id="password" class="spassword" pattern="{8,}" title="At least 8 or more characters"   placeholder="Password" class="box" required>
-            <img id="passwordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('password', 'passwordIcon')" src="show.png" style="width: 25px; height: 25px;">
-        </div>
+        <label>Password:</label>
+        <input type="password" name="password" id="password" class="spassword" minlength="4" placeholder="Password" class="box" required>
+        <img id="passwordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('password', 'passwordIcon')" src="show.png" style="width: 25px; height: 25px;">
+    </div>
 
-        <div class="password-container">
-            <label>Confirm Password:</label>
-            <input type="password" name="cpassword" id="cpassword" class="spassword" pattern="{8,}" title="At least 8 or more characters"  placeholder="Confirm Password" class="box" required>
-            <img id="cpasswordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('cpassword', 'cpasswordIcon')" src="show.png" style="width: 25px; height: 25px;"> 
-        </div>
-            
-            <br><br>
+    <div class="password-container">
+        <label>Confirm Password:</label>
+        <input type="password" name="cpassword" id="cpassword" class="spassword" minlength="4" placeholder="Confirm Password" class="box" required>
+        <img id="cpasswordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('cpassword', 'cpasswordIcon')" src="show.png" style="width: 25px; height: 25px;"> 
+    </div>
+    <br><br>
     
     <input type="reset" name="reset"  class="btn" required>
     <input type="submit" name="submit"  class="btn" required>

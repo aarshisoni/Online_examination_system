@@ -1,287 +1,259 @@
 <?php
-// Start session
 session_start();
 
-// Include database connection file
-include "connect.php";
-
-// Check if student is logged in
 if (!isset($_SESSION['studentid'])) {
-    // Redirect to login page if not logged in
     header("Location: student_login.php");
     exit();
 }
 
-// Fetch student's name from the register table using session studentid
+include "connect.php";
 $studentid = $_SESSION['studentid'];
 
-// Fetch title_name and teacherid from selected_student table
-$query_info = "SELECT title_name, teacherid FROM selected_student WHERE studentid = '$studentid'";
-$result_info = mysqli_query($con, $query_info);
+$titleName = isset($_GET['title_name']) ? trim($_GET['title_name']) : '';
+$teacherid = isset($_GET['teacherid']) ? trim($_GET['teacherid']) : '';
 
-// Check if query was successful and if a row was returned
-if ($result_info && mysqli_num_rows($result_info) > 0) {
-    // Fetch the first row from the result set
-    $row_info = mysqli_fetch_assoc($result_info);
-    // Store the title_name and teacherid in variables
-    $titleName = $row_info['title_name'];
-    $teacherid = $row_info['teacherid'];
+if (empty($titleName) || empty($teacherid)) {
+    header("Location: student_quiz_dashboard.php");
+    exit();
+}
 
-    // Fetch questions related to the teacher and title
-    $sql_fetch_questions = "SELECT * FROM quiz_questions WHERE teacherid = '$teacherid' AND title_name = '$titleName'";
-    $result_questions = $con->query($sql_fetch_questions);
+// Check if already submitted
+$check = $con->prepare("SELECT sid FROM submit_score WHERE studentid = ? AND teacherid = ? AND title_name = ?");
+$check->bind_param("sss", $studentid, $teacherid, $titleName);
+$check->execute();
+if ($check->get_result()->num_rows > 0) {
+    echo "<script>alert('You have already submitted this exam.'); window.location.href='student_quiz_dashboard.php';</script>";
+    exit();
+}
 
-    // Check if there are questions available
-    if ($result_questions->num_rows > 0) {
-        
-        // Initialize total marks
-        $totalMarks = 0;
+// Fetch questions
+$sql_fetch = "SELECT * FROM quiz_questions WHERE teacherid = ? AND title_name = ? ORDER BY question_number ASC";
+$stmt = $con->prepare($sql_fetch);
+$stmt->bind_param("ss", $teacherid, $titleName);
+$stmt->execute();
+$result_questions = $stmt->get_result();
 
-        // Loop through each question to calculate total marks
-        while ($row = $result_questions->fetch_assoc()) {
-            // Add marks of the current question to total marks
-            $totalMarks += intval($row["marks"]);
+if ($result_questions->num_rows == 0) {
+    echo "<script>alert('No questions available for this exam.'); window.location.href='student_quiz_dashboard.php';</script>";
+    exit();
+}
+
+$totalQuestions = $result_questions->num_rows;
+$totalMarks = 0;
+$questions_data = [];
+
+while ($row = $result_questions->fetch_assoc()) {
+    $questions_data[] = $row;
+    $totalMarks += intval($row["marks"]);
+}
+
+// Fetch student name
+$st_stmt = $con->prepare("SELECT fname FROM register WHERE studentid = ?");
+$st_stmt->bind_param("s", $studentid);
+$st_stmt->execute();
+$st_row = $st_stmt->get_result()->fetch_assoc();
+$studentName = $st_row ? $st_row['fname'] : "Student";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Exam: <?php echo htmlspecialchars($titleName); ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
         }
-
-        // Reset result pointer to the beginning
-        $result_questions->data_seek(0);
-
-        ?>
-
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Generate Quiz</title>
-            <style>
-                 <style>
-                 .marks {
-            float: right;
-        }
-
-        /* Conditional style for the first question */
-        .question:first-child {
-            border-top: none; /* Remove top border for the first question */
-        }
-        .question {
-            margin-bottom: 20px;
-            font-size: 30px;
-            padding-top: 10px; /* Add some padding to separate the border from the content */
-        }
-
-        .options {
-            margin-left: 20px;
-            margin-top:40px;
-        }
-
-        .options label {
-            display: block;
-            margin-bottom: 10px;
-        }
-
-        /* New CSS for border and centering */
-        form {
-            border: 2px solid #000;
-            padding: 20px;
-            border-radius: 10px;
-            width: 80%; /* Set the width of the form */
-            margin: 0 auto; /* Center the form horizontally */
-            background-color:  rgba(221, 221, 221, 0.908);
-            font-size:50px;
-           padding-left:40px;
-            
-        }
-
-        /* CSS for submit button */
-        input[type="submit"] {
-            background-color: green; /* Darker green on hover */
-            border:2px solid green;
-            color: white; /* White text */
-            padding: 10px 17px; /* Padding */
-            text-align: center; /* Center text */
-            text-decoration: none; /* Remove underline */
-            display: inline-block; /* Make it inline */
-            font-size: 16px; /* Font size */
-            margin: 4px 2px 0; /* Margin */
-            cursor: pointer; /* Cursor style */
-            border-radius: 8px; /* Border radius */
-        }
-
-        input[type="submit"]:hover {
-            
-            background-color: #4CAF50; /* Green background */
-        }
-
-        input[type="radio"]{
-            width:30px;
-          
-        }
-        .question {
-                    margin-bottom: 20px;
-                    font-size: 25   px;
-                    padding-top: 10px;
-                    position: relative; /* Ensure relative positioning for absolute positioning of marks */
-                }
-
-                .marks {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    font-weight: bold;
-                }
-        /* CSS for header */
-        h1 {
-            font-size:40px;
-            margin:2% 0 3% 10%;
-        }
-        /* CSS for marks content */
-        /* .marks {
-            float: right;
-        } */
-        /* CSS to center-align total marks */
-        .total-marks-container {
-            margin-left: 78%;
-            font-size: 23px;
-            font-weight:600;
-        }
-
-        /* Conditional style for the first question */
-        .question:first-child {
-            border-top: none; /* Remove top border for the first question */
-        }
-
-        /* CSS for toggle switch */
-        .toggle-container {
+        .exam-header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 15px 35px;
             display: flex;
-            /* float:left; */
             align-items: center;
-        }
-
-        .toggle-container #timerStatus {
-            font-size: 23px; /* Increase font size */
-            margin:1% 0.5% 1.3% 48%; /* Add margin to the timer status */
-            
-        }
-
-        .toggle-container #timerInput {
-            margin-right: 10px; /* Add margin to the right of the timer input */
-            display:none;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px; /* Decrease width */
-            height: 20px; /* Decrease height */
-            /* Add margin to the right of the switch */
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
+            justify-content: space-between;
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 20px; /* Adjust border-radius accordingly */
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px; /* Adjust height of slider handle */
-            width: 16px; /* Adjust width of slider handle */
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #2196F3;
-        }
-
-        input:focus + .slider {
-            box-shadow: 0 0 1px #2196F3;
-        }
-
-        input:checked + .slider:before {
-            -webkit-transform: translateX(20px); /* Adjust translation based on new width */
-            -ms-transform: translateX(20px); /* Adjust translation based on new width */
-            transform: translateX(20px); /* Adjust translation based on new width */
-        }
-
-        /* Rounded sliders */
-        .slider.round {
-            border-radius: 20px; /* Adjust border-radius accordingly */
-        }
-
-        .slider.round:before {
-            border-radius: 50%;
-        }
-        #timerInputDiv{
-            margin:0 0.5% 1.3% 48%;
+        .exam-title-box h2 {
+            margin: 0;
             font-size: 20px;
         }
+        .exam-title-box span {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .exam-meta-pills {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .pill {
+            background: rgba(0,0,0,0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .container {
+            max-width: 900px;
+            margin: 30px auto 60px;
+            padding: 0 20px;
+        }
+        .question-card {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            border: 1px solid #eef2f5;
+            margin-bottom: 25px;
+        }
+        .q-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .q-number {
+            font-size: 16px;
+            font-weight: 700;
+            color: #11998e;
+        }
+        .q-marks-tag {
+            background: #eef2f5;
+            color: #495057;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .q-text {
+            font-size: 17px;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .options-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .option-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 15px;
+            background: #ffffff;
+        }
+        .option-label:hover {
+            border-color: #11998e;
+            background-color: #f0fff4;
+        }
+        .option-label input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #11998e;
+            cursor: pointer;
+        }
+        .submit-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+        }
+        .btn-submit-exam {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+            transition: 0.2s;
+        }
+        .btn-submit-exam:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(17, 153, 142, 0.4);
+        }
     </style>
-        </head>
-        <body>
-            <h1>Generated Quiz for <?php echo $titleName; ?></h1>
-            <div class="total-marks-container"><p>Total Marks: <?php echo $totalMarks; ?></p></div>
-            <form method="post" action="student_quiz_result.php?title_name=<?php echo urlencode($titleName); ?>&teacherid=<?php echo $teacherid; ?>">
-                <input type="hidden" name="title_name" value="<?php echo $titleName; ?>">
-                <input type="hidden" name="teacherid" value="<?php echo $teacherid; ?>">
+</head>
+<body>
 
-                <?php
-                // Display randomly selected questions
-                $question_number = 1; // Counter for question number
-                while ($row = $result_questions->fetch_assoc()) {
-                    echo "<div class='question'>";
-                    echo "Question " . $question_number . ": " . $row['question'] . "<br></br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option1'>" . $row['option1'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option2'>" . $row['option2'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option3'>" . $row['option3'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option4'>" . $row['option4'] . "</label><br>";
-                    echo "<span class='marks'>(Marks: " . $row['marks'] . ")</span><br>";
-                    echo "</div>";
-                    $question_number++; // Increment question number
-                }
-                ?>
-                
-                <input type="submit" value="Submit Quiz">
-            </form>
+<div class="exam-header">
+    <div class="exam-title-box">
+        <h2><i class="fas fa-file-alt"></i> <?php echo htmlspecialchars($titleName); ?></h2>
+        <span>Examinee: <strong><?php echo htmlspecialchars($studentName); ?></strong> (<?php echo htmlspecialchars($studentid); ?>)</span>
+    </div>
+    <div class="exam-meta-pills">
+        <div class="pill"><i class="fas fa-list-ol"></i> <?php echo $totalQuestions; ?> Questions</div>
+        <div class="pill"><i class="fas fa-trophy"></i> Total: <?php echo $totalMarks; ?> Marks</div>
+    </div>
+</div>
 
-            <!-- <script type="text/javascript"> 
-                function preventBack() { 
-                    window.history.forward();  
-                } 
-                  
-                setTimeout("preventBack()", 0); 
-                  
-                window.onunload = function () { null }; 
-            </script> -->
-        </body>
-        </html>
+<div class="container">
+    <form id="examForm" method="post" action="student_quiz_result.php?title_name=<?php echo urlencode($titleName); ?>&teacherid=<?php echo urlencode($teacherid); ?>" onsubmit="return confirm('Are you sure you want to finish and submit your exam? You cannot modify your answers afterwards.');">
+        <input type="hidden" name="title_name" value="<?php echo htmlspecialchars($titleName); ?>">
+        <input type="hidden" name="teacherid" value="<?php echo htmlspecialchars($teacherid); ?>">
 
-        <?php
-    } else {
-        // No questions available for this title
-        echo "No questions available for $titleName";
-    }
-} else {
-    // Title name not provided
-    echo "Title name not provided.";
-}
-?>
+        <?php $q_counter = 1; ?>
+        <?php foreach ($questions_data as $q): ?>
+            <div class="question-card">
+                <div class="q-top">
+                    <span class="q-number">Question <?php echo $q_counter; ?> of <?php echo $totalQuestions; ?></span>
+                    <span class="q-marks-tag"><?php echo $q['marks']; ?> Mark(s)</span>
+                </div>
+                <div class="q-text">
+                    <?php echo htmlspecialchars($q['question']); ?>
+                </div>
+                <div class="options-group">
+                    <label class="option-label">
+                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option1">
+                        <span><strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?></span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option2">
+                        <span><strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?></span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option3">
+                        <span><strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?></span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option4">
+                        <span><strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?></span>
+                    </label>
+                </div>
+            </div>
+            <?php $q_counter++; ?>
+        <?php endforeach; ?>
+
+        <div class="submit-section">
+            <span style="color: #636e72; font-size: 14px;"><i class="fas fa-check-double"></i> Review all answers before submitting.</span>
+            <button type="submit" class="btn-submit-exam"><i class="fas fa-paper-plane"></i> Submit Examination</button>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

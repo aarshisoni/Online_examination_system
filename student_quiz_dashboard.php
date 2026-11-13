@@ -1,219 +1,221 @@
-
 <?php
-// Start session
 session_start();
 
-// Check if student is logged in
 if (!isset($_SESSION['studentid'])) {
-    // Redirect to login page if not logged in
     header("Location: student_login.php");
     exit();
 }
 
-// Include database connection file
 include "connect.php";
-
-// Fetch student's name from the register table using session username
 $studentid = $_SESSION['studentid'];
-$query = "SELECT fname FROM register WHERE studentid = '$studentid'";
-$result = mysqli_query($con, $query);
 
-// Check if query was successful and if a row was returned
-if ($result && mysqli_num_rows($result) > 0) {
-    // Fetch the first row from the result set
-    $row = mysqli_fetch_assoc($result);
-    // Store the student's name in a variable
-    $studentName = $row['fname'];
-} else {
-    // Default student name if query fails or no row is returned
-    $studentName = "Student";
-}
+// Fetch all assigned quizzes for this student
+$query = "SELECT ss.title_name, ss.teacherid, ar.fname AS teacher_name, ar.branch AS teacher_branch,
+                 (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.teacherid = ss.teacherid AND qq.title_name = ss.title_name) AS question_count,
+                 (SELECT SUM(marks) FROM quiz_questions qq WHERE qq.teacherid = ss.teacherid AND qq.title_name = ss.title_name) AS total_marks,
+                 sc.marks AS scored_marks,
+                 sc.sid AS submission_id
+          FROM selected_student ss
+          LEFT JOIN admin_register ar ON ss.teacherid = ar.teacherid
+          LEFT JOIN submit_score sc ON sc.studentid = ss.studentid AND sc.teacherid = ss.teacherid AND sc.title_name = ss.title_name
+          WHERE ss.studentid = ?
+          ORDER BY sc.sid ASC, ss.sid DESC";
 
-// Fetch title_name and teacherid from selected_student table
-$query_info = "SELECT title_name, teacherid FROM selected_student WHERE studentid = '$studentid'";
-$result_info = mysqli_query($con, $query_info);
-
-// Check if query was successful and if a row was returned
-if ($result_info && mysqli_num_rows($result_info) > 0) {
-    // Fetch the first row from the result set
-    $row_info = mysqli_fetch_assoc($result_info);
-    // Store the title_name and teacherid in variables
-    $titleName = $row_info['title_name'];
-    $teacherId = $row_info['teacherid'];
-} else {
-    // Default values if query fails or no row is returned
-    $titleName = "Title";
-    $teacherId = "Teacher ID";
-}
+$stmt = $con->prepare($query);
+$stmt->bind_param("s", $studentid);
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- <link rel="stylesheet" href="student_dashboardcss.css"> -->
-    <script src="https://kit.fontawesome.com/5ec31c46d7.js" crossorigin="anonymous"></script>
+    <title>Live Examinations Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/css/fontawesome.min.css" integrity="sha384-BY+fdrpOd3gfeRvTSMT+VUZmA728cfF9Z2G42xpaRkUGu2i3DyzpTURDo5A6CaLK" crossorigin="anonymous">
-    <title><?php echo $studentName; ?></title>
     <style>
-        /* Your CSS styles here */
-        * {
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: Arial;
-            /* Added a fallback font */
+            color: #333;
         }
-        /* responsive */
-        
-        @media screen and (max-width:1050px) {
-            .side-menu li {
-                font-size: 20px;
-            }
-        }
-        
-        @media screen and (max-width:940px) {
-            .side-menu li span {
-                display: none;
-            }
-        }
-        /* Global Styles */
-        
-        body {
-            min-height: 100vh;
-        }
-        
-        a {
-            text-decoration: none;
-        }
-        /* Header Styles */
-        
-        header {
-            height: 80px;
+        header { 
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             color: white;
-            background-color: rgb(184, 149, 149);
+            padding: 18px 35px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+        header h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        .header-nav {
+            display: flex;
+            gap: 12px;
+        }
+        .nav-btn {
+            color: white;
+            text-decoration: none;
+            background: rgba(0,0,0,0.15);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .nav-btn:hover {
+            background: rgba(0,0,0,0.25);
+        }
+        .container {
+            max-width: 1100px;
+            margin: 35px auto;
             padding: 0 20px;
         }
-        
-        .menu_bar {
-            cursor: pointer;
-            font-size: 24px;
-            display: flex;
+        .intro-text {
+            margin-bottom: 25px;
         }
-        
-        h3 {
-            color: #fff;
-            font-weight: bold;
+        .intro-text h3 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 5px;
         }
-        
-        .side-menu {
-            background: rgb(184, 149, 149);
-            width: 20vw;
-            min-height: calc(100vh - 60px);
-            /* Adjusted height */
+        .intro-text p {
+            color: #7f8c8d;
+            font-size: 15px;
+        }
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+        .exam-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            border: 1px solid #eef2f5;
+            padding: 25px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            /* Center items vertically */
-            transition: transform 0.3s ease;
-            /* Added transition */
+            justify-content: space-between;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
-        .side-menu.collapsed {
-            transform: translateX(-100%);
+        .exam-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         }
-        
-        .side-menu ul {
-            list-style: none;
-            /* Remove bullet points */
-            padding: 10px 0;
-            /* Adjusted padding */
+        .exam-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 10px;
         }
-        
-        .side-menu li {
-            font-size: 18px;
-            padding: 10px 0 15px 20px;
-            /* Adjusted padding */
-            color: #fff;
-            cursor: pointer;
-            width: 20vw;
-            transition: width 0.3s ease;
-            /* Added transition */
-        }
-        
-        .side-menu li:hover {
-            background-color: white;
-        }
-        
-        .fa-solid {
-            position: relative;
-            color: #345e70;
-            margin-right: 8px;
-            /* Adjusted margin */
-            font-size: 20px;
-            text-decoration: none;
-        }
-        /* Admin Container Styles */
-        
-        .student_container {
-            position: relative;
+        .exam-details {
+            margin: 15px 0;
             display: flex;
-            flex-direction: row;
-            /* Align items side by side */
-            /* justify-content: flex-end; Align items to the right */
-            height: 100vh;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+            color: #636e72;
         }
-        /* Admin Header Styles */
-        
-        .student_header {
-            width: 80vw;
-            height: 650px;
-            /* Reduced height */
-            background: #fff;
+        .exam-details div {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-attempt {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.1);
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(17, 153, 142, 0.3);
+            transition: 0.2s;
         }
-        
-        .student_header .nav {
-            width: 90%;
-            display: flex;
-            align-items: center;
+        .btn-attempt:hover {
+            opacity: 0.95;
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        }
+        .completed-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            color: #27ae60;
+            font-size: 14px;
+        }
+        .empty-state {
+            background: white;
+            padding: 50px;
+            border-radius: 12px;
+            text-align: center;
+            color: #7f8c8d;
         }
     </style>
 </head>
-
 <body>
-    <header>
-        <div class="menu_bar" id="menuToggle">
-            <h3><i class="fas fa-bars"></i>&nbsp;&nbsp;Student Dashboard</h3>
-        </div>
-    </header>
-    <div class="student_container" id="studentContainer">
-        <div class="side-menu" id="sideMenu">
-            <ul>
-                <li><a href="student_start.php?studentid=<?php echo $studentid; ?>"><i class="fas fa-pencil-alt"></i>&nbsp;<span><?php echo $titleName; ?></span></a></li>
-
-            </ul>
-        </div>
-        <div class="student_header">
-            <div class="nav">
-                <!-- Your navigation content here -->
-            </div>
-        </div>
+<header>
+    <h2><i class="fas fa-laptop-code"></i> Live Examinations</h2>
+    <div class="header-nav">
+        <a href="student_dashboard.php" class="nav-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+        <a href="student_score_dashboard.php" class="nav-btn"><i class="fas fa-trophy"></i> My Results</a>
+        <a href="student_logout.php" class="nav-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
-    <script>
-        document.getElementById("menuToggle").addEventListener("click", function() {
-            document.getElementById("sideMenu").classList.toggle("collapsed");
-        });
-    </script>
-</body>
+</header>
 
+<div class="container">
+    <div class="intro-text">
+        <h3>Available Tests & Exams</h3>
+        <p>Select any examination assigned by your faculty to begin. Please read all instructions before starting.</p>
+    </div>
+
+    <?php if ($result && $result->num_rows > 0): ?>
+        <div class="exam-grid">
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <?php $isSubmitted = ($row['submission_id'] !== null); ?>
+                <div class="exam-card">
+                    <div>
+                        <div class="exam-title"><?php echo htmlspecialchars($row['title_name']); ?></div>
+                        <div class="exam-details">
+                            <div><i class="fas fa-user-tie"></i> Faculty: <strong><?php echo htmlspecialchars($row['teacher_name'] ? $row['teacher_name'] : $row['teacherid']); ?></strong></div>
+                            <div><i class="fas fa-question-circle"></i> Questions: <strong><?php echo $row['question_count']; ?></strong></div>
+                            <div><i class="fas fa-award"></i> Total Marks: <strong><?php echo $row['total_marks'] ? $row['total_marks'] : '0'; ?></strong></div>
+                        </div>
+                    </div>
+
+                    <?php if ($isSubmitted): ?>
+                        <div class="completed-box">
+                            <i class="fas fa-check-circle"></i> Exam Completed (Score: <?php echo $row['scored_marks']; ?>/<?php echo $row['total_marks']; ?>)
+                        </div>
+                    <?php else: ?>
+                        <a href="student_start.php?title_name=<?php echo urlencode($row['title_name']); ?>&teacherid=<?php echo urlencode($row['teacherid']); ?>" class="btn-attempt">
+                            <i class="fas fa-play"></i> Start Examination
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    <?php else: ?>
+        <div class="empty-state">
+            <i class="fas fa-folder-open" style="font-size: 48px; color: #cbd5e0; margin-bottom: 15px;"></i>
+            <h3>No Live Exams Found</h3>
+            <p>You currently do not have any pending exams assigned to your account.</p>
+        </div>
+    <?php endif; ?>
+</div>
+</body>
 </html>

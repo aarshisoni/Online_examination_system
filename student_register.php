@@ -2,47 +2,45 @@
 @include "connect.php";
 
 if(isset($_POST["submit"])){
-$fname= $_POST['fname'];
-$studentid=$_POST["studentid"];
-$email=  $_POST["email"];
-$Branch=  $_POST["Branch"];
-$year=  $_POST["year"];
-$dob=  $_POST["dob"];
-$gender=  $_POST["gender"];
-$phone=  $_POST["phone"];
-$password=  $_POST["password"];
-$cpassword=  $_POST["cpassword"] ;
+    $fname = trim($_POST['fname']);
+    $studentid = trim($_POST["studentid"]);
+    $email = trim($_POST["email"]);
+    $branch = $_POST["Branch"];
+    $year = $_POST["year"];
+    $dob = $_POST["dob"];
+    $gender = $_POST["gender"];
+    $phone = $_POST["phone"];
+    $password = $_POST["password"];
+    $cpassword = $_POST["cpassword"];
 
-// Check if user already exists
-$select="SELECT * FROM register WHERE studentid='$studentid' && password='$password'";
-$result=mysqli_query($con, $select);
-if (mysqli_num_rows($result)>0) {
-  $error[]="user already exist";
-}
-else{
-  if($password!=$cpassword){
-    $error[]="password not matched";
-    
-  }else{
-$query= "INSERT INTO  register  values('$fname','$studentid','$email','$Branch','$year','$dob','$gender','$phone','$password','$cpassword')";
-$data= mysqli_query ($con,$query);
-if($data)
-{
-  echo '<script> 
-  window.location.href="student_login.php";  
-   alert("Registration successful!");
-</script>';
+    // Check if passwords match
+    if ($password !== $cpassword){
+        echo '<script>alert("Passwords do not match!"); window.location.href="student_register.php";</script>';
+        exit();
+    }
 
-}else{
-  echo '<script> 
-     window.location.href="student_login.php";  
-      alert(" failed!!!");
- </script>';
- }
-}
-}
-}
+    // Check if student ID or email already exists
+    $stmt = $con->prepare("SELECT studentid FROM register WHERE studentid = ? OR email = ?");
+    $stmt->bind_param("ss", $studentid, $email);
+    $stmt->execute();
+    $res = $stmt->get_result();
 
+    if ($res->num_rows > 0) {
+        echo '<script>alert("Student ID or Email already registered!"); window.location.href="student_register.php";</script>';
+        exit();
+    }
+
+    // Insert new student
+    $stmt = $con->prepare("INSERT INTO register (fname, studentid, email, branch, year, dob, gender, phone, password, cpassword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssssssss", $fname, $studentid, $email, $branch, $year, $dob, $gender, $phone, $password, $cpassword);
+    if ($stmt->execute()) {
+        echo '<script>alert("Registration successful! Please login."); window.location.href="student_login.php";</script>';
+        exit();
+    } else {
+        echo '<script>alert("Registration failed: ' . addslashes($con->error) . '"); window.location.href="student_register.php";</script>';
+        exit();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -201,16 +199,16 @@ if($data)
     <input type="text"  name="phone" class="box" required>
    
     <div class="password-container">
-            <label>Password:</label>
-            <input type="password" name="password" id="password" class="spassword" pattern="{8,}" title="At least 8 or more characters"   placeholder="Password" class="box" required>
-            <img id="passwordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('password', 'passwordIcon')" src="show.png" style="width: 25px; height: 25px;">
-        </div>
+        <label>Password:</label>
+        <input type="password" name="password" id="password" class="spassword" minlength="4" placeholder="Password" class="box" required>
+        <img id="passwordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('password', 'passwordIcon')" src="show.png" style="width: 25px; height: 25px;">
+    </div>
 
-        <div class="password-container">   
-            <label>Confirm Password:</label>
-            <input type="password" name="cpassword" id="cpassword" class="spassword" pattern="{8,}" title="At least 8 or more characters"  placeholder="Confirm Password" class="box" required>
-            <img id="cpasswordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('cpassword', 'cpasswordIcon')" src="show.png" style="width: 25px; height: 25px;"> 
-        </div><br><br>
+    <div class="password-container">   
+        <label>Confirm Password:</label>
+        <input type="password" name="cpassword" id="cpassword" class="spassword" minlength="4" placeholder="Confirm Password" class="box" required>
+        <img id="cpasswordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('cpassword', 'cpasswordIcon')" src="show.png" style="width: 25px; height: 25px;"> 
+    </div><br><br>
 
     <input type="reset" name="reset"  class="btn" required>
     <input type="submit" name="submit"  class="btn" required>

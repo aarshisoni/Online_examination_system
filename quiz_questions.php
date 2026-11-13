@@ -3,365 +3,368 @@ session_start();
 
 // Check if teacher is logged in
 if (!isset($_SESSION['teacherid'])) {
-    // Redirect to login page if not logged in
     header("Location: admin_login.php");
     exit();
 }
 
-// Include database connection file
 include 'connect.php';
 
-// Fetch teacher's ID from session
 $teacherid = $_SESSION['teacherid'];
+$title_name = isset($_GET['title_name']) ? trim($_GET['title_name']) : '';
 
-// Fetch title_name from URL parameters
-if (isset($_GET['title_name'])) {
-    $title_name = $_GET['title_name'];
-
-
-    // Check if form is submitted
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        if (isset($_POST['delete_question'])) {
-            // Delete question
-            $delete_question_id = $_POST['delete_question'];
-
-            // Delete record from quiz_questions table
-            $sql_delete = "DELETE FROM quiz_questions WHERE id = '$delete_question_id' AND teacherid = '$teacherid' AND title_name = '$title_name'";
-            if ($con->query($sql_delete) === TRUE) {
-                //echo "Question deleted successfully.";
-            } else {
-                echo "Error deleting question: " . $con->error;
-            }
-        } else {
-            // Retrieve form data
-            $question_number = $_POST['question_number'];
-            $question = $_POST['question'];
-            $option1 = $_POST['option1'];
-            $option2 = $_POST['option2'];
-            $option3 = $_POST['option3'];
-            $option4 = $_POST['option4'];
-            $correct_option = $_POST['correct_option'];
-            $marks = $_POST['marks'];
-
-            // Insert data into quiz_questions table
-            $sql_insert = "INSERT INTO quiz_questions (teacherid, title_name, question_number, question, option1, option2, option3, option4, correct_option, marks) 
-                           VALUES ('$teacherid', '$title_name', '$question_number', '$question', '$option1', '$option2', '$option3', '$option4', '$correct_option', '$marks')";
-
-            if ($con->query($sql_insert) === TRUE) {
-                //echo "New record inserted successfully.";
-            } else {
-                echo "Error: " . $sql_insert . "<br>" . $con->error;
-            }
-        }
-    }
-} else {
-    // Handle case when title_name is not provided in the URL
-    $title_name = ""; // Initialize $title_name as an empty string
-    // echo "Title name not provided in URL.";
+if (empty($title_name)) {
+    header("Location: display_quize.php");
+    exit();
 }
 
-// Fetch questions and options from quiz_questions table
-$sql_fetch_questions = "SELECT * FROM quiz_questions WHERE teacherid = '$teacherid' AND title_name = '$title_name'";
-$result_questions = $con->query($sql_fetch_questions);
+$alert_msg = "";
 
+// Check if form is submitted
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST['delete_question'])) {
+        $delete_question_id = intval($_POST['delete_question']);
+        $stmt_del = $con->prepare("DELETE FROM quiz_questions WHERE id = ? AND teacherid = ? AND title_name = ?");
+        $stmt_del->bind_param("iss", $delete_question_id, $teacherid, $title_name);
+        if ($stmt_del->execute()) {
+            $alert_msg = "Question deleted successfully.";
+        } else {
+            $alert_msg = "Error deleting question: " . $con->error;
+        }
+    } elseif (isset($_POST['add_question'])) {
+        $question_number = intval($_POST['question_number']);
+        $question = trim($_POST['question']);
+        $option1 = trim($_POST['option1']);
+        $option2 = trim($_POST['option2']);
+        $option3 = trim($_POST['option3']);
+        $option4 = trim($_POST['option4']);
+        $correct_option = trim($_POST['correct_option']);
+        $marks = intval($_POST['marks']);
+
+        $stmt_ins = $con->prepare("INSERT INTO quiz_questions (teacherid, title_name, question_number, question, option1, option2, option3, option4, correct_option, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt_ins->bind_param("ssissssssi", $teacherid, $title_name, $question_number, $question, $option1, $option2, $option3, $option4, $correct_option, $marks);
+
+        if ($stmt_ins->execute()) {
+            $alert_msg = "Question added successfully!";
+        } else {
+            $alert_msg = "Error adding question: " . $con->error;
+        }
+    }
+}
+
+// Fetch all questions for this quiz
+$stmt_fetch = $con->prepare("SELECT * FROM quiz_questions WHERE teacherid = ? AND title_name = ? ORDER BY question_number ASC");
+$stmt_fetch->bind_param("ss", $teacherid, $title_name);
+$stmt_fetch->execute();
+$result_questions = $stmt_fetch->get_result();
+
+// Determine next suggested question number
+$next_q_num = $result_questions->num_rows + 1;
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Questions</title>
-    <!-- Add your CSS styles here -->
+    <title>Manage Questions - <?php echo htmlspecialchars($title_name); ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             background-color: rgb(235, 210, 210);
             margin: 0;
             padding: 0;
         }
-
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
+        header {
+            background-color: rgb(184, 149, 149);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            background: #345e70;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .header-nav a:hover {
+            background: #233e4a;
+        }
+        .main-wrapper {
+            display: flex;
+            padding: 30px 40px;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        .sidebar-actions {
+            width: 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .action-link {
+            display: block;
+            background-color: #037808;
+            color: white;
+            padding: 12px 18px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .action-link:hover {
+            background-color: #229027;
+        }
+        .action-link.secondary {
+            background-color: #008CBA;
+        }
+        .action-link.secondary:hover {
+            background-color: #005f6b;
+        }
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .card {
             background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-right: 12%;
-            margin-top: -26%;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-
-        h1 {
-            font-size: 27px;
-            margin-bottom: 20px;
+        .card h3 {
+            margin-top: 0;
             color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
         }
-
-        form {
-            margin-bottom: 20px;
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
-
+        .full-width {
+            grid-column: span 2;
+        }
         label {
             display: block;
             margin-bottom: 5px;
-            font-size: 18px;
-            color: #555;
+            font-weight: bold;
+            color: #444;
+            font-size: 14px;
         }
-
-        input[type="text"],
-        input[type="submit"],
-        select {
+        input[type="text"], input[type="number"], select {
             width: 100%;
             padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
             border: 1px solid #ccc;
+            border-radius: 5px;
             box-sizing: border-box;
-            font-size: 16px;
+            font-size: 15px;
         }
-
-        input[type="submit"] {
-            background-color: #4CAF50;
-            color: #fff;
+        .btn-submit {
+            background-color: #037808;
+            color: white;
             border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.3s;
-            padding: 8px 16px;
-            /* Reduced padding */
-            width: 200px; /* Set width to 200px */
+            margin-top: 10px;
         }
-
-        input[type="submit"]:hover {
-            background-color: #45a049;
+        .btn-submit:hover {
+            background-color: #229027;
         }
-
-        .delete-btn,
-            input[type="submit"] {
-            width: 200px; 
-        }
-
-
-        ul {
+        .question-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }
-
-        li {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-        }
-
-        li:hover {
-            background-color: #f0f0f0;
-        }
-
-        .question-number {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .delete-btn {
-            background-color: red;
-            border: 2px solid red;
-            padding: 7px;
-            color: white;
-            border-radius: 10px;
-            justify-content: center;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            width: 200px; /* Set width to 200px */
-        }
-
-        .delete-btn:hover {
-            background-color: #f44336;
-        }
-
-        .main-buttons {
             display: flex;
             flex-direction: column;
-            margin-top:-6%;
+            gap: 15px;
         }
-
-        .main-buttons > div {
+        .question-item {
+            background-color: #fdfdfd;
+            border: 1px solid #e2e2e2;
+            padding: 20px;
+            border-radius: 6px;
+        }
+        .q-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
         }
-
-
-        .button {
-            background-color: #037808;
-            width:200px;
-            font-size:16px;
+        .q-title {
+            font-size: 17px;
+            font-weight: bold;
+            color: #222;
+        }
+        .q-marks {
+            background: #eef2f5;
+            color: #333;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .q-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .opt {
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .opt.correct {
+            background: #d4edda;
+            color: #155724;
+            font-weight: bold;
+            border: 1px solid #c3e6cb;
+        }
+        .btn-delete {
+            background-color: #dc3545;
             color: white;
-            padding: 10px;
-            font-size: large;
-            border-radius: 5px;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
             cursor: pointer;
-            margin:10% 10% 0 4%;
-
+            font-size: 14px;
         }
-
-        .selected-student-list-button {
-            background-color: #037808;
-            width:200px;
-            font-size:16px;
-            color: white;
-            padding: 10px;
-            font-size: large;
-            border-radius: 5px;
-            cursor: pointer;
-            margin:2% 10% 0 4%;
+        .btn-delete:hover {
+            background-color: #bd2130;
         }
-        .generate-button {
-            background-color: #037808;
-            width:200px;
-            font-size:16px;
-            color: white;
-            padding: 10px;
-            font-size: large;
-            border-radius: 5px;
-            cursor: pointer;
-            margin:2% 10% 0 4%;
-
-        }
-
-        .selected-student-list-button:hover,
-        .button:hover {
-            background-color: #229027;
-        }
-
-        .generate-button:hover {
-            background-color: #229027;; /* Change the background color on hover */
-        }
-
-        .back-button {
-            display: inline-block;
-            background-color: #008CBA;
-            color: white;
-            margin: 2% 0 30px 5%;
-            padding: 10px;
-            text-decoration: none;
-            border-radius: 50%; /* For making the button circular */
-            width: 30px; /* Adjust size of the circle */
-            height: 30px; /* Adjust size of the circle */
-            line-height: 28px; /* For centering the arrow */
-            text-align: center;
-            font-size: 24px;
-            box-shadow: 4px 4px 6px #888888; /* Adding border shadow */
-        }
-
-        .back-button:hover {
-            background-color: #005f6b;
+        .alert-box {
+            padding: 12px 20px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 6px;
+            margin-bottom: 15px;
         }
     </style>
-
-    <script>
-    function checkdelete() {
-        return confirm('Are you sure you want to delete this record?');
-    }
-</script>   
 </head>
-
 <body>
-    <!-- Back button -->
-    <a href="admin_dashboard.php?teacherid=<?php echo $teacherid; ?>&title_name=<?php echo urlencode($title_name); ?>" class="back-button" style="font-size: 30px; font-weight: 500;">&#8592;</a>
-<div class="main-buttons">
-    <div>
-        <a href="student_list_to_select.php?title_name=<?php echo $title_name; ?>&teacherid=<?php echo $teacherid; ?>">
-            <button class="button" onclick="nextPage()">Student List</button>
+<header>
+    <h2><i class="fas fa-clipboard-question"></i> Quiz: <?php echo htmlspecialchars($title_name); ?></h2>
+    <div class="header-nav">
+        <a href="admin_dashboard.php"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+</header>
+
+<div class="main-wrapper">
+    <div class="sidebar-actions">
+        <a href="student_list_to_select.php?title_name=<?php echo urlencode($title_name); ?>&teacherid=<?php echo urlencode($teacherid); ?>" class="action-link">
+            <i class="fas fa-user-plus"></i> Assign Students
+        </a>
+        <a href="selected_student_list.php?title_name=<?php echo urlencode($title_name); ?>&teacherid=<?php echo urlencode($teacherid); ?>" class="action-link secondary">
+            <i class="fas fa-users"></i> Assigned Students
+        </a>
+        <a href="generate_quiz.php?title_name=<?php echo urlencode($title_name); ?>&teacherid=<?php echo urlencode($teacherid); ?>" class="action-link" target="_blank">
+            <i class="fas fa-eye"></i> Preview Quiz
+        </a>
+        <a href="display_quize.php" class="action-link secondary">
+            <i class="fas fa-list"></i> All Quizzes
         </a>
     </div>
 
-    <div>
-        <a href="selected_student_list.php?title_name=<?php echo $title_name; ?>&teacherid=<?php echo $teacherid; ?>">
-            <button class="selected-student-list-button" onclick="nextPage()">Selected Student List</button>
-        </a>
-    </div>
+    <div class="content-area">
+        <?php if (!empty($alert_msg)): ?>
+            <div class="alert-box"><?php echo htmlspecialchars($alert_msg); ?></div>
+        <?php endif; ?>
 
-    <div>
-        <a href="generate_quiz.php?title_name=<?php echo $title_name; ?>&teacherid=<?php echo $teacherid; ?>">
-            <button class="generate-button" onclick="nextPage()">Generate Quiz</button>
-        </a>
+        <!-- Add Question Card -->
+        <div class="card">
+            <h3><i class="fas fa-plus-circle"></i> Add New Question</h3>
+            <form method="post" action="quiz_questions.php?teacherid=<?php echo urlencode($teacherid); ?>&title_name=<?php echo urlencode($title_name); ?>">
+                <input type="hidden" name="add_question" value="1">
+                <div class="form-grid">
+                    <div>
+                        <label for="question_number">Question Number:</label>
+                        <input type="number" id="question_number" name="question_number" value="<?php echo $next_q_num; ?>" required>
+                    </div>
+                    <div>
+                        <label for="marks">Marks:</label>
+                        <input type="number" id="marks" name="marks" value="1" min="1" required>
+                    </div>
+                    <div class="full-width">
+                        <label for="question">Question Text:</label>
+                        <input type="text" id="question" name="question" placeholder="Enter question description" required>
+                    </div>
+                    <div>
+                        <label for="option1">Option 1:</label>
+                        <input type="text" id="option1" name="option1" placeholder="First option" required>
+                    </div>
+                    <div>
+                        <label for="option2">Option 2:</label>
+                        <input type="text" id="option2" name="option2" placeholder="Second option" required>
+                    </div>
+                    <div>
+                        <label for="option3">Option 3:</label>
+                        <input type="text" id="option3" name="option3" placeholder="Third option" required>
+                    </div>
+                    <div>
+                        <label for="option4">Option 4:</label>
+                        <input type="text" id="option4" name="option4" placeholder="Fourth option" required>
+                    </div>
+                    <div class="full-width">
+                        <label for="correct_option">Correct Option:</label>
+                        <select id="correct_option" name="correct_option" required>
+                            <option value="">Select the correct option</option>
+                            <option value="option1">Option 1</option>
+                            <option value="option2">Option 2</option>
+                            <option value="option3">Option 3</option>
+                            <option value="option4">Option 4</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit"><i class="fas fa-check"></i> Add Question</button>
+            </form>
+        </div>
+
+        <!-- Existing Questions Card -->
+        <div class="card">
+            <h3><i class="fas fa-list-check"></i> Questions in this Quiz (<?php echo $result_questions->num_rows; ?>)</h3>
+            <?php if ($result_questions->num_rows > 0): ?>
+                <ul class="question-list">
+                    <?php while ($row = $result_questions->fetch_assoc()): ?>
+                        <li class="question-item">
+                            <div class="q-header">
+                                <span class="q-title">Q<?php echo $row['question_number']; ?>: <?php echo htmlspecialchars($row['question']); ?></span>
+                                <span class="q-marks"><?php echo $row['marks']; ?> Mark(s)</span>
+                            </div>
+                            <div class="q-options">
+                                <div class="opt <?php echo ($row['correct_option'] === 'option1') ? 'correct' : ''; ?>">A: <?php echo htmlspecialchars($row['option1']); ?></div>
+                                <div class="opt <?php echo ($row['correct_option'] === 'option2') ? 'correct' : ''; ?>">B: <?php echo htmlspecialchars($row['option2']); ?></div>
+                                <div class="opt <?php echo ($row['correct_option'] === 'option3') ? 'correct' : ''; ?>">C: <?php echo htmlspecialchars($row['option3']); ?></div>
+                                <div class="opt <?php echo ($row['correct_option'] === 'option4') ? 'correct' : ''; ?>">D: <?php echo htmlspecialchars($row['option4']); ?></div>
+                            </div>
+                            <form method="post" onsubmit="return confirm('Are you sure you want to delete this question?');">
+                                <input type="hidden" name="delete_question" value="<?php echo $row['id']; ?>">
+                                <button type="submit" class="btn-delete"><i class="fas fa-trash"></i> Delete Question</button>
+                            </form>
+                        </li>
+                    <?php endwhile; ?>
+                </ul>
+            <?php else: ?>
+                <p style="color: #666; font-style: italic;">No questions added yet. Use the form above to add questions to this quiz.</p>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
-
-
-
-
-        <div class="container">
-            <h1>Add Questions for <?php echo $title_name; ?></h1>
-            <!-- Form to add new questions -->
-            <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]) . "?teacherid=$teacherid&title_name=$title_name"; ?>">
-                <!-- Add your form fields here -->
-                <label for="question_number">Question Number:</label><br>
-                <input type="text" id="question_number" name="question_number" required><br><br>
-
-                <label for="question">Question:</label><br>
-                <input type="text" id="question" name="question" required><br><br>
-
-                <label for="option1">Option 1:</label><br>
-                <input type="text" id="option1" name="option1" required><br><br>
-
-                <label for="option2">Option 2:</label><br>
-                <input type="text" id="option2" name="option2" required><br><br>
-
-                <label for="option3">Option 3:</label><br>
-                <input type="text" id="option3" name="option3" required><br><br>
-
-                <label for="option4">Option 4:</label><br>
-                <input type="text" id="option4" name="option4" required><br><br>
-
-                <label for="marks">Marks:</label><br>
-                <input type="text" id="marks" name="marks" required><br><br>
-
-                <label for="correct_option">Correct Option:</label><br>
-                <select id="correct_option" name="correct_option" required>
-                <option value="">Choose correct option</option>
-                    <option value="option1">Option 1</option>
-                    <option value="option2">Option 2</option>
-                    <option value="option3">Option 3</option>
-                    <option value="option4">Option 4</option>
-                </select><br><br>
-
-                <input type="submit" value="Submit">
-            </form>
-
-            <!-- Display fetched questions and options -->
-            <h2>Questions</h2>
-            <ul>
-                <?php
-                if (isset($title_name) && $result_questions !== false && $result_questions->num_rows > 0) {
-                    while ($row = $result_questions->fetch_assoc()) {
-                        echo "<li>";
-                        echo "Question Number: " . $row['question_number'] . "<br>";
-                        echo "Question: " . $row['question'] . "<br>";
-                        echo "Option 1: " . $row['option1'] . "<br>";
-                        echo "Option 2: " . $row['option2'] . "<br>";
-                        echo "Option 3: " . $row['option3'] . "<br>";
-                        echo "Option 4: " . $row['option4'] . "<br>";
-                        echo "Correct Option: " . $row['correct_option'] . "<br>";
-                        echo "Marks: " . $row['marks'] . "<br>";
-                        echo "<form method='post'><input type='hidden' name='delete_question' value='" . $row['id'] . "'><input type='submit' value='Delete' onclick='return checkdelete()'></form>";
-                        echo "</li>";
-                    }
-                } else {
-                    echo "<p>No questions found.</p>";
-                }
-                ?>
-            </ul>
-
-            <!-- <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-            <input type="hidden" name="title_name" value="<?php echo $title_name; ?>">
-            <input type="submit" name="upload_quiz" value="Upload Quiz">
-        </form> -->
-
-        </div>
 </body>
-
 </html>

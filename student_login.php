@@ -1,21 +1,23 @@
 <?php
 include("connect.php");
 session_start();
+$error_msg = "";
+
 if(isset($_POST["submit"])) {
-    $studentid = $_POST["studentid"]; // Corrected variable name
+    $studentid = trim($_POST["studentid"]);
     $password = $_POST["password"];
 
-    $select = "SELECT * FROM register WHERE studentid='$studentid' && password='$password'"; // Corrected variable name
-    $result = mysqli_query($con, $select);
-    $total = mysqli_num_rows($result);
-    if($total == 1) {
+    $stmt = $con->prepare("SELECT * FROM register WHERE studentid = ? AND password = ?");
+    $stmt->bind_param("ss", $studentid, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if($result && $result->num_rows == 1) {
         $_SESSION['studentid'] = $studentid;
-        // Redirect to student_dashboard.php with student ID as query parameter
-        header("Location: student_dashboard.php?studentid=$studentid");
+        header("Location: student_dashboard.php?studentid=" . urlencode($studentid));
         exit();
     } else {
-        header("Location: student_login.php");
-        exit();
+        $error_msg = "Invalid Student ID or Password!";
     }
 }
 ?>
@@ -101,16 +103,22 @@ if(isset($_POST["submit"])) {
 <body>
     <div class="login">
     <form action="#" method="POST" enctype="multipart/form-data">
-    <h2>LOGIN NOW</h2>
+    <h2>STUDENT LOGIN</h2>
+    <?php if (!empty($error_msg)): ?>
+        <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center;">
+            <?php echo htmlspecialchars($error_msg); ?>
+        </div>
+    <?php endif; ?>
     <label>Student ID: </label>
     <input type="text" name="studentid" placeholder="Student ID" class="box" required><br><br>
     <div class="password-container">
-                <label>Password:</label>
-                <input type="password" name="password" placeholder="Password" id="spassword" class="box" required>
-                <img id="showPasswordIcon" onclick="togglePasswordVisibility()" src="show.png" style="width: 25px; height: 25px;">
-            </div><br><br>
+        <label>Password:</label>
+        <input type="password" name="password" placeholder="Password" id="spassword" class="box" required>
+        <img id="showPasswordIcon" onclick="togglePasswordVisibility()" src="show.png" style="width: 25px; height: 25px;">
+    </div><br><br>
     <input type="submit" name="submit" value="Login" class="btn">
-    <p>You don't have an account? <a href="user_register.php">Register now</a></p>
+    <p>You don't have an account? <a href="student_register.php">Register now</a></p>
+    <p><a href="MainPage.html">&#8592; Back to Home</a></p>
 </form>
 </div>
 

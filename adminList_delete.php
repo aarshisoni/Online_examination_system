@@ -1,27 +1,33 @@
 <?php
-@include "connect.php";
+session_start();
 
-// Check if 'studentid' parameter is set in the URL
-if(isset($_GET['teacherid'])) {
-    // Get the value of 'studentid' parameter
-    $teacherid = $_GET['teacherid'];
+if (!isset($_SESSION['teacherid'])) {
+    header("Location: admin_login.php");
+    exit();
+}
 
-    // Prepare the query to delete the record with the given studentid
-    $query = "DELETE FROM admin_register WHERE teacherid='$teacherid'";
+include "connect.php";
 
-    // Execute the query
-    $data = mysqli_query($con, $query);
+if (isset($_GET['teacherid'])) {
+    $target_teacherid = trim($_GET['teacherid']);
+    
+    // Prevent self-deletion if current user
+    if ($target_teacherid === $_SESSION['teacherid']) {
+        echo "<script>alert('You cannot delete your own active faculty account!'); window.location.href='admin_list.php';</script>";
+        exit();
+    }
 
-    // Check if the query executed successfully
-    if($data){ 
-        // If successful, echo a JavaScript alert message
-        echo "<script>alert('Record deleted');</script>";
+    $stmt = $con->prepare("DELETE FROM admin_register WHERE teacherid = ?");
+    $stmt->bind_param("s", $target_teacherid);
+    if ($stmt->execute()) {
+        echo "<script>alert('Faculty record deleted successfully.'); window.location.href='admin_list.php';</script>";
+        exit();
     } else {
-        // If failed, echo a JavaScript alert message
-        echo "<script>alert('Failed to delete');</script>";
+        echo "<script>alert('Failed to delete faculty record: " . addslashes($con->error) . "'); window.location.href='admin_list.php';</script>";
+        exit();
     }
 } else {
-    // If 'studentid' parameter is not provided, echo a JavaScript alert message
-    echo "<script>alert('No studentid provided');</script>";
+    header("Location: admin_list.php");
+    exit();
 }
 ?>

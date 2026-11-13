@@ -1,21 +1,23 @@
 <?php
 include("connect.php");
 session_start();
-if(isset($_POST["submit"])){
-    $teacherid=$_POST["teacherid"];
-    $password=$_POST["password"];
+$error_msg = "";
 
-    $select="SELECT * FROM admin_register where teacherid= '$teacherid' && password= '$password'";
-    $result = mysqli_query($con,$select);
-    $total=mysqli_num_rows($result);
-    if($total==1){
-        $_SESSION['teacherid']=$teacherid;
-        // Redirect to admin_dashboard.php with teacher ID as query parameter
-        header("Location: admin_dashboard.php?teacherid=$teacherid");
+if(isset($_POST["submit"])){
+    $teacherid = trim($_POST["teacherid"]);
+    $password = $_POST["password"];
+
+    $stmt = $con->prepare("SELECT * FROM admin_register WHERE teacherid = ? AND password = ?");
+    $stmt->bind_param("ss", $teacherid, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if($result && $result->num_rows == 1){
+        $_SESSION['teacherid'] = $teacherid;
+        header("Location: admin_dashboard.php?teacherid=" . urlencode($teacherid));
         exit();
-    }else{
-        header("Location: admin_login.php");
-        exit();
+    } else {
+        $error_msg = "Invalid Teacher ID or Password!";
     }
 }
 ?>
@@ -103,9 +105,14 @@ if(isset($_POST["submit"])){
 <body>
     <div class="login">
         <form action="#" method="POST" enctype="multipart/form-data">
-            <h2>LOGIN NOW</h2>
-            <label>Username:</label>
-            <input type="text" name="teacherid" placeholder="TaecherId" class="box" required><br><br>
+            <h2>TEACHER LOGIN</h2>
+            <?php if (!empty($error_msg)): ?>
+                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center;">
+                    <?php echo htmlspecialchars($error_msg); ?>
+                </div>
+            <?php endif; ?>
+            <label>Teacher ID:</label>
+            <input type="text" name="teacherid" placeholder="Teacher ID" class="box" required><br><br>
             <div class="password-container">
                 <label>Password:</label>
                 <input type="password" name="password" placeholder="Password" id="spassword" class="box" required>
@@ -113,6 +120,7 @@ if(isset($_POST["submit"])){
             </div><br><br>
             <input type="submit" name="submit" value="Login" class="btn">
             <p>You don't have an account? <a href="adm_register.php">Register now</a></p>
+            <p><a href="MainPage.html">&#8592; Back to Home</a></p>
         </form>
     </div>
 

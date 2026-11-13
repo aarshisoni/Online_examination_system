@@ -1,27 +1,33 @@
 <?php
-@include "connect.php";
+session_start();
 
-// Check if 'studentid' parameter is set in the URL
-if(isset($_GET['studentid'])) {
-    // Get the value of 'studentid' parameter
-    $studentid = $_GET['studentid'];
+if (!isset($_SESSION['teacherid'])) {
+    header("Location: admin_login.php");
+    exit();
+}
 
-    // Prepare the query to delete the record with the given studentid
-    $query = "DELETE FROM register WHERE studentid='$studentid'";
+include "connect.php";
 
-    // Execute the query
-    $data = mysqli_query($con, $query);
+if (isset($_GET['studentid'])) {
+    $studentid = trim($_GET['studentid']);
 
-    // Check if the query executed successfully
-    if($data){ 
-        // If successful, echo a JavaScript alert message
-        echo "<script>alert('Record deleted');</script>";
-    } else {
-        // If failed, echo a JavaScript alert message
-        echo "<script>alert('Failed to delete');</script>";
-    }
+    // Delete student and cascade from selected_student and submit_score
+    $stmt1 = $con->prepare("DELETE FROM register WHERE studentid = ?");
+    $stmt1->bind_param("s", $studentid);
+    $stmt1->execute();
+
+    $stmt2 = $con->prepare("DELETE FROM selected_student WHERE studentid = ?");
+    $stmt2->bind_param("s", $studentid);
+    $stmt2->execute();
+
+    $stmt3 = $con->prepare("DELETE FROM submit_score WHERE studentid = ?");
+    $stmt3->bind_param("s", $studentid);
+    $stmt3->execute();
+
+    echo "<script>alert('Student record and related exam records deleted successfully.'); window.location.href='student_list.php';</script>";
+    exit();
 } else {
-    // If 'studentid' parameter is not provided, echo a JavaScript alert message
-    echo "<script>alert('No studentid provided');</script>";
+    header("Location: student_list.php");
+    exit();
 }
 ?>

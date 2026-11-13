@@ -1,278 +1,177 @@
 <?php
 session_start();
 
-// Include database connection file
-include 'connect.php'; // Assuming this file contains the database connection details
-
-// Check if teacher is logged in
 if (!isset($_SESSION['teacherid'])) {
-    // Redirect to login page if not logged in
     header("Location: admin_login.php");
     exit();
 }
 
-// Fetch teacher's ID from session
+include 'connect.php';
 $teacherid = $_SESSION['teacherid'];
+$title_name = isset($_GET['title_name']) ? trim($_GET['title_name']) : '';
 
-// Fetch title_name from previous page
-if (isset($_GET['title_name'])) {
+if (empty($title_name)) {
+    header("Location: display_quize.php");
+    exit();
+}
 
-    $title_name = $_GET['title_name'];
+// Fetch questions related to this teacher and title
+$stmt = $con->prepare("SELECT * FROM quiz_questions WHERE teacherid = ? AND title_name = ? ORDER BY question_number ASC");
+$stmt->bind_param("ss", $teacherid, $title_name);
+$stmt->execute();
+$result_questions = $stmt->get_result();
 
-    // Fetch questions related to the teacher and title
-    $sql_fetch_questions = "SELECT * FROM quiz_questions WHERE teacherid = '$teacherid' AND title_name = '$title_name'";
-    $result_questions = $con->query($sql_fetch_questions);
+$totalMarks = 0;
+$totalQuestions = $result_questions->num_rows;
+$questions = [];
 
-    // Check if there are questions available
-    if ($result_questions->num_rows > 0) {
-        // Display form to generate quiz
-        
-        // Initialize total marks
-        $totalMarks = 0;
-
-        // Loop through each question to calculate total marks
-        while ($row = $result_questions->fetch_assoc()) {
-            // Add marks of the current question to total marks
-            $totalMarks += intval($row["marks"]);
-        }
-
-        // Reset result pointer to the beginning
-        $result_questions->data_seek(0);
-?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Generate Quiz</title>
-            <style>
-                 <style>
-                 .marks {
-            float: right;
-        }
-
-        /* Conditional style for the first question */
-        .question:first-child {
-            border-top: none; /* Remove top border for the first question */
-        }
-            .question {
-                margin-bottom: 20px;
-                font-size: 23px;
-                padding-top: 10px; /* Add some padding to separate the border from the content */
-            }
-            input[type="radio"]{
-            width:30px;
-          
-        }
-
-            .options {
-                margin-left: 20px;
-                margin-top:40px;
-            }
-
-            .options label {
-                display: block;
-                margin-bottom: 10px;
-            }
-
-        /* New CSS for border and centering */
-        form {
-            border: 2px solid #000;
-            padding: 20px;
-            border-radius: 10px;
-            width: 80%; /* Set the width of the form */
-            margin: 0 auto; /* Center the form horizontally */
-            background-color:  rgba(221, 221, 221, 0.908);
-            font-size:30px;
-           padding-left:40px;
-            
-        }
-
-        /* CSS for submit button */
-        input[type="submit"] {
-            background-color: green; /* Darker green on hover */
-            border:2px solid green;
-            color: white; /* White text */
-            padding: 10px 17px; /* Padding */
-            text-align: center; /* Center text */
-            text-decoration: none; /* Remove underline */
-            display: inline-block; /* Make it inline */
-            font-size: 16px; /* Font size */
-            margin: 4px 2px 0; /* Margin */
-            cursor: pointer; /* Cursor style */
-            border-radius: 8px; /* Border radius */
-        }
-
-        input[type="submit"]:hover {
-            
-            background-color: #4CAF50; /* Green background */
-        }
-        .question {
-                    margin-bottom: 20px;
-                    font-size: 23px;
-                    padding-top: 10px;
-                    position: relative; /* Ensure relative positioning for absolute positioning of marks */
-                }
-
-                .marks {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    font-weight: bold;
-                }
-        /* CSS for header */
-        h1 {
-            font-size:40px;
-            margin:2% 0 3% 10%;
-        }
-        /* CSS for marks content */
-        /* .marks {
-            float: right;
-        } */
-        /* CSS to center-align total marks */
-        .total-marks-container {
-            margin-left: 78%;
-            font-size: 23px;
-        }
-
-        /* Conditional style for the first question */
-        .question:first-child {
-            border-top: none; /* Remove top border for the first question */
-        }
-
-        /* CSS for toggle switch */
-        .toggle-container {
-            display: flex;
-            /* float:left; */
-            align-items: center;
-        }
-
-        .toggle-container #timerStatus {
-            font-size: 23px; /* Increase font size */
-            margin:1% 0.5% 1.3% 48%; /* Add margin to the timer status */
-            
-        }
-
-        .toggle-container #timerInput {
-            margin-right: 10px; /* Add margin to the right of the timer input */
-            display:none;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px; /* Decrease width */
-            height: 20px; /* Decrease height */
-            /* Add margin to the right of the switch */
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 20px; /* Adjust border-radius accordingly */
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px; /* Adjust height of slider handle */
-            width: 16px; /* Adjust width of slider handle */
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #2196F3;
-        }
-
-        input:focus + .slider {
-            box-shadow: 0 0 1px #2196F3;
-        }
-
-        input:checked + .slider:before {
-            -webkit-transform: translateX(20px); /* Adjust translation based on new width */
-            -ms-transform: translateX(20px); /* Adjust translation based on new width */
-            transform: translateX(20px); /* Adjust translation based on new width */
-        }
-
-        /* Rounded sliders */
-        .slider.round {
-            border-radius: 20px; /* Adjust border-radius accordingly */
-        }
-
-        .slider.round:before {
-            border-radius: 50%;
-        }
-        #timerInputDiv{
-            margin:0 0.5% 1.3% 48%;
-            font-size: 20px;
-        }
-    </style>
-             <body>
-            <h1>Generated Quiz for <?php echo $title_name; ?></h1>
-            <div class="total-marks-container"><p>Total Marks: <?php echo $totalMarks; ?></p></div>
-            <form id="quizForm" method="post" action="quiz_result.php">
-                <input type="hidden" name="teacherid" value="<?php echo $teacherid; ?>">
-                <input type="hidden" name="title_name" value="<?php echo $title_name; ?>">
-
-                <?php
-                // Display randomly selected questions
-                $question_number = 1; // Counter for question number
-                while ($row = $result_questions->fetch_assoc()) {
-                    echo "<div class='question'>";
-                    echo "Question " . $question_number . ": " . $row['question'] . "<br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option1'>" . $row['option1'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option2'>" . $row['option2'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option3'>" . $row['option3'] . "</label><br>";
-                    echo "<label><input type='radio' name='question_" . $row['id'] . "' value='option4'>" . $row['option4'] . "</label><br>";
-                    echo "<span class='marks'>(Marks: " . $row['marks'] . ")</span><br>";
-                    echo "</div>";
-                    $question_number++; // Increment question number
-                }
-                ?>
-
-                <input type="submit" value="Submit Quiz">
-            </form>
-
-            <!-- <script>
-                // Function to submit the quiz automatically after a specified time
-                function submitQuizAutomatically(timeLimit) {
-                    setTimeout(function(){
-                        document.getElementById("quizForm").submit();
-                    }, timeLimit * 60 * 1000); // Convert minutes to milliseconds
-                }
-
-                // Call the function to submit quiz automatically after a specified time
-                var quizDuration = <?php echo isset($_POST['quiz_duration']) ? $_POST['quiz_duration'] : 30; ?>; // Default quiz duration is 30 minutes
-                submitQuizAutomatically(quizDuration);
-            </script> -->
-        </body>
-        </html>
-
-<?php
-    } else {
-        // No questions available for this title
-        echo "No questions available for $title_name";
-    }
-} else {
-    // Title name not provided
-    echo "Title name not provided.";
+while ($row = $result_questions->fetch_assoc()) {
+    $questions[] = $row;
+    $totalMarks += intval($row["marks"]);
 }
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview: <?php echo htmlspecialchars($title_name); ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 15px 35px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h2 { margin: 0; font-size: 20px; }
+        .preview-badge {
+            background: #f39c12;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .container {
+            max-width: 850px;
+            margin: 30px auto 60px;
+            padding: 0 20px;
+        }
+        .info-card {
+            background: white;
+            padding: 20px 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .q-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid #eef2f5;
+        }
+        .q-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: #1e3c72;
+        }
+        .q-text {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .opt-item {
+            padding: 10px 15px;
+            border-radius: 6px;
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            font-size: 14px;
+        }
+        .opt-correct {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <h2><i class="fas fa-eye"></i> Examination Preview: <?php echo htmlspecialchars($title_name); ?></h2>
+        <span class="preview-badge">Faculty Preview Mode</span>
+    </div>
+    <a href="quiz_questions.php?teacherid=<?php echo urlencode($teacherid); ?>&title_name=<?php echo urlencode($title_name); ?>" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; font-weight: 500;">
+        <i class="fas fa-arrow-left"></i> Exit Preview
+    </a>
+</header>
+
+<div class="container">
+    <div class="info-card">
+        <div>
+            <h3 style="margin: 0; color: #2c3e50;"><?php echo htmlspecialchars($title_name); ?></h3>
+            <span style="color: #718096; font-size: 14px;">Total Questions: <strong><?php echo $totalQuestions; ?></strong> | Total Marks: <strong><?php echo $totalMarks; ?></strong></span>
+        </div>
+        <a href="student_list_to_select.php?title_name=<?php echo urlencode($title_name); ?>" style="background: #27ae60; color: white; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            <i class="fas fa-user-plus"></i> Assign to Students
+        </a>
+    </div>
+
+    <?php if ($totalQuestions > 0): ?>
+        <?php foreach ($questions as $q): ?>
+            <div class="q-card">
+                <div class="q-header">
+                    <span>Question <?php echo $q['question_number']; ?></span>
+                    <span style="background: #eef2f5; color: #4a5568; padding: 2px 10px; border-radius: 12px; font-size: 12px;"><?php echo $q['marks']; ?> Mark(s)</span>
+                </div>
+                <div class="q-text"><?php echo htmlspecialchars($q['question']); ?></div>
+                <div class="options-list">
+                    <div class="opt-item <?php echo ($q['correct_option'] === 'option1') ? 'opt-correct' : ''; ?>">
+                        <strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?> <?php echo ($q['correct_option'] === 'option1') ? '&#10004; (Correct Answer)' : ''; ?>
+                    </div>
+                    <div class="opt-item <?php echo ($q['correct_option'] === 'option2') ? 'opt-correct' : ''; ?>">
+                        <strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?> <?php echo ($q['correct_option'] === 'option2') ? '&#10004; (Correct Answer)' : ''; ?>
+                    </div>
+                    <div class="opt-item <?php echo ($q['correct_option'] === 'option3') ? 'opt-correct' : ''; ?>">
+                        <strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?> <?php echo ($q['correct_option'] === 'option3') ? '&#10004; (Correct Answer)' : ''; ?>
+                    </div>
+                    <div class="opt-item <?php echo ($q['correct_option'] === 'option4') ? 'opt-correct' : ''; ?>">
+                        <strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?> <?php echo ($q['correct_option'] === 'option4') ? '&#10004; (Correct Answer)' : ''; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p style="text-align: center; color: #718096; padding: 30px;">No questions added yet. <a href="quiz_questions.php?teacherid=<?php echo urlencode($teacherid); ?>&title_name=<?php echo urlencode($title_name); ?>">Add questions now</a>.</p>
+    <?php endif; ?>
+</div>
+</body>
+</html>

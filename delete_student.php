@@ -1,25 +1,23 @@
 <?php
-// Include database connection file
+session_start();
+
+if (!isset($_SESSION['teacherid'])) {
+    header("Location: admin_login.php");
+    exit();
+}
+
 include 'connect.php';
 
-// Check if student ID is provided in the request
-if (isset($_POST['studentid'])) {
-    // Sanitize the input to prevent SQL injection
-    $studentId = mysqli_real_escape_string($con, $_POST['studentid']);
+$teacherid = $_SESSION['teacherid'];
+$studentId = isset($_REQUEST['studentid']) ? trim($_REQUEST['studentid']) : '';
+$titleName = isset($_REQUEST['title_name']) ? trim($_REQUEST['title_name']) : '';
 
-    // Construct the DELETE query
-    $query = "DELETE FROM selected_student WHERE studentid = '$studentId'";
-
-    // Execute the query
-    if (mysqli_query($con, $query)) {
-        // Deletion successful
-        echo "Student deleted successfully.";
-    } else {
-        // Error occurred during deletion
-        echo "Error: " . mysqli_error($con);
-    }
-} else {
-    // Student ID not provided in the request
-    echo "Student ID not provided.";
+if (!empty($studentId) && !empty($titleName)) {
+    $stmt = $con->prepare("DELETE FROM selected_student WHERE studentid = ? AND teacherid = ? AND title_name = ?");
+    $stmt->bind_param("sss", $studentId, $teacherid, $titleName);
+    $stmt->execute();
 }
+
+header("Location: selected_student_list.php?teacherid=" . urlencode($teacherid) . "&title_name=" . urlencode($titleName));
+exit();
 ?>

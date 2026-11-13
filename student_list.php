@@ -1,361 +1,235 @@
-
 <?php
-// Include your configuration file to establish a database connection
-include("connect.php");
-error_reporting(0);
 session_start();
 
-// Check if teacher is logged in
 if (!isset($_SESSION['teacherid'])) {
-    // Redirect to login page if not logged in
     header("Location: admin_login.php");
     exit();
 }
 
-// Fetch teacher's ID from session
+include "connect.php";
 $teacherid = $_SESSION['teacherid'];
-$title_name = isset($_GET['title_name']) ? $_GET['title_name'] : '';
 
-// Initialize variables for search query and filters
-$search_query = "";
-$filter_branch = "";
-$filter_year = "";
+$search_query = isset($_GET["search_query"]) ? trim($_GET["search_query"]) : "";
+$filter_branch = isset($_GET["filter_branch"]) ? trim($_GET["filter_branch"]) : "";
+$filter_year = isset($_GET["filter_year"]) ? trim($_GET["filter_year"]) : "";
 
-// Check if form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") { 
-    // Get search value from form
-    $search_query = $_POST["search_query"];
-    // Get filter values from form
-    $filter_branch = $_POST["filter_branch"];
-    $filter_year = $_POST["filter_year"];
+// Build search query with prepared statement
+$query = "SELECT * FROM register WHERE 1=1";
+$params = [];
+$types = "";
 
-    // Modify the SQL query to include search and filter conditions
-        $query = "SELECT * FROM register WHERE 1=1"; // Start with a basic query
-
-        if (!empty($search_query)) {
-            // Add search condition
-            $query .= " AND (fname LIKE '%$search_query%' OR studentid LIKE '%$search_query%')";
-        }
-
-        if (!empty($filter_branch) && !empty($filter_year)) {
-            // Add branch and year filter conditions
-            $query .= " AND branch = '$filter_branch' AND year = '$filter_year'";
-        } elseif (!empty($filter_branch)) {
-            // Add branch filter condition
-            if ($filter_branch == 'CSE') {
-                // Modify branch value to match database value
-                $filter_branch = 'CSE';
-            }
-            $query .= " AND branch = '$filter_branch'";
-        } elseif (!empty($filter_year)) {
-            // Add year filter condition
-            $query .= " AND year = '$filter_year'";
-        }
-
-} else {
-    // Fetch all data if form is not submitted
-    $query = "SELECT * FROM register";
+if (!empty($search_query)) {
+    $query .= " AND (fname LIKE ? OR studentid LIKE ?)";
+    $like = "%" . $search_query . "%";
+    $params[] = $like;
+    $params[] = $like;
+    $types .= "ss";
 }
 
-$data = mysqli_query($con, $query);
-
-if (!$data) {
-    // Query execution failed
-    echo "Error: " . mysqli_error($con);
-    exit;
+if (!empty($filter_branch)) {
+    $query .= " AND branch = ?";
+    $params[] = $filter_branch;
+    $types .= "s";
 }
 
-$total = mysqli_num_rows($data);
-
-// Fetch selected students along with their details
-$query = "SELECT register.fname, register.studentid, register.email, register.branch, register.year, register.dob, register.gender, register.phone
-          FROM selected_student
-          INNER JOIN register ON selected_student.studentid = register.studentid
-          WHERE selected_student.teacherid = '$teacherid' AND selected_student.title_name = '$title_name'";
-
-// Check if a branch filter is applied
-if (isset($_GET['branch']) && !empty($_GET['branch'])) {
-    $branchFilter = $_GET['branch'];
-    // Add branch filter to the query
-    $query .= " AND register.branch = '$branchFilter'";
+if (!empty($filter_year)) {
+    $query .= " AND year = ?";
+    $params[] = $filter_year;
+    $types .= "s";
 }
 
-$result = mysqli_query($con, $query);
+$query .= " ORDER BY fname ASC";
+
+$stmt = $con->prepare($query);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$data = $stmt->get_result();
+$total = $data->num_rows;
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Record</title>
+    <title>Manage Students - Examination Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-
         body {
-            font-family: Arial;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
         }
-
-        header{ 
-            background-image: linear-gradient(100deg,white, rgb(184, 149, 149));
-            background-color: rgb(184, 149, 149);
-        }
-
-        a.update {
-            border: 0;
-            outline: none;
-            border-radius: 5px;
-            height: 20%;
-            width: 25%;
-            margin-left: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            /* padding: 2px 2px 2px 0; */
-            display: inline-block;
-            background-color:rgb(80, 170, 178);
+        header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
-            padding: 5% 8% 5% 6%;
+            padding: 18px 35px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         }
-
-        a.update:hover {
-            background-color: #008CBA;
-        }
-
-        a.delete {
-            border: 0;
-            outline: none;
-            border-radius: 5px;
-            height: 20%;
-            width: 25%;
-            margin-left: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            /* padding: 2px 2px 2px 0; */
-            display: inline-block;
-            background-color:#f44336;
+        header h2 { margin: 0; font-size: 22px; font-weight: 600; }
+        .header-nav { display: flex; gap: 12px; }
+        .nav-btn {
             color: white;
-            padding: 10px 8px 10px 12px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: 0.2s;
         }
-
-        a.delete:hover{
-            background-color: red;
+        .nav-btn:hover { background: rgba(255,255,255,0.35); }
+        .container {
+            max-width: 1250px;
+            margin: 30px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         }
-
-        h2{
-            font-size:35px;
-            text-align:center;
-            padding:1% 0 1% 0;
-            margin-top:15px;
+        .filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #edf2f7;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-
-        .year{
-            margin-left: 30px;
-            /* text-align:center; */
+        .search-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
         }
-
-        label {
-            margin-bottom: 5px;
-            font-size: large;
-            text-align: center;
+        .search-form input, .search-form select {
+            padding: 9px 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
         }
-
-        .box {
-            padding: 7px;
-            border: 1px solid #ccc;
+        .btn-search {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f7fafc;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:hover { background-color: #f8fafc; }
+        .btn-sm {
+            padding: 5px 10px;
             border-radius: 4px;
-            width: 200px;
-            margin-bottom: 10px;
-        }
-
-        .box:focus,
-        .btn:focus
-        .add:focus {
-            outline: none;
-            border-color:black;
-            box-shadow: 0 0 2px black;
-        }
-
-        .option {
-            padding: 5px;
-        }
-        .btn{
-            background-color:gainsboro;
-            cursor: pointer;
-            color: black;
-            margin-left: 10px;
-            height: 30px;
-            width: 70px;
-            outline: none; }
-
-            .add{
-                background-color: rgb(1, 4, 5);
-            }
-
-   
-           table {
-               font-family: arial;
-               border-collapse: collapse;
-               width: 90%;
-               margin:5% 0 0 3%
-           }
-   
-            td, 
-           th,
-           tr {
-               border: 2px solid grey;
-               text-align: left;
-               padding: 8px;
-              
-           }
-           th{
-                background-color: #dfdfdf;
-               text-align: center; 
-           }
-   
-           tr:nth-child(even) {
-               background-color: #dddddd;
-           } 
-   
-           input[type="checkbox"],button{
-           width: 50px;
-           height: 17px;
-           cursor: pointer;   
-       }
-
-       input[type="text"],
-        select {
-            width: 200px;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-
-        /* CSS for search button */
-        button[type="submit"] {
-            width:10%;
-            height:6%;
-            background-color: #4CAF50; /* Green background */
-            color: white; /* White text */
-            padding: 10px 20px; /* Padding */
-            border: none; /* No border */
-            border-radius: 4px; /* Rounded corners */
-            cursor: pointer; /* Cursor style */
-            font-size: 16px; /* Font size */
-        }
-
-        /* Hover effect */
-        button[type="submit"]:hover {
-            background-color: #45a049; /* Darker green */
-        }
-
-        .back-button {
-            display: inline-block;
-            background-color: #008CBA;
-            color: white;
-            margin: 0 0 2% 5%;
-            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
             text-decoration: none;
-            border-radius: 50%; /* For making the button circular */
-            width: 30px; /* Adjust size of the circle */
-            height: 30px; /* Adjust size of the circle */
-            line-height: 28px; /* For centering the arrow */
-            text-align: center;
-            font-size: 24px;
-            box-shadow: 4px 4px 6px #888888; /* Adding border shadow */
+            margin-right: 5px;
+            display: inline-block;
         }
-
-        .back-button:hover {
-            background-color: #005f6b;
-        }
-
+        .btn-edit { background: #3498db; color: white; }
+        .btn-del { background: #e74c3c; color: white; }
+        .empty-state { text-align: center; padding: 40px; color: #718096; }
     </style>
-
 </head>
 <body>
-    <header>
-    <h2 align="center">Student Record</h2>
-    </header>   
-    <!-- Back button -->
-    <a href="admin_dashboard.php?teacherid=<?php echo $teacherid; ?>&title_name=<?php echo urlencode($title_name); ?>" class="back-button" style="font-size: 30px; font-weight: 500;">&#8592;</a>
+<header>
+    <h2><i class="fas fa-user-graduate"></i> Manage Student Records</h2>
+    <div class="header-nav">
+        <a href="admin_dashboard.php" class="nav-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+</header>
 
-    <!-- Add a search form -->
-    <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
-        <label for="search_query">Search by Name or Student ID:</label>
-        <input type="text" id="search_query" name="search_query" value="<?php echo $search_query; ?>">
-        <label for="filter_branch">Filter by Branch:</label>
-        <select id="filter_branch" name="filter_branch">
-            <option value="">All</option>
-            <option value="CSE" <?php if ($filter_branch == 'CSE') echo 'selected'; ?>>CSE</option>
-            <option value="Electrical" <?php if ($filter_branch == 'Electrical') echo 'selected'; ?>>Electrical</option>
-            <option value="Civil" <?php if ($filter_branch == 'Civil') echo 'selected'; ?>>Civil</option>
-            <option value="Mechanical" <?php if ($filter_branch == 'Mechanical') echo 'selected'; ?>>Mechanical</option>
-            <!-- Add more options as needed -->
-        </select>
-        <label for="filter_year">Filter by Year:</label>
-        <select id="filter_year" name="filter_year">
-            <option value="">All</option>
-            <option value="1" <?php if ($filter_year == '1') echo 'selected'; ?>>First Year</option>
-            <option value="2" <?php if ($filter_year == '2') echo 'selected'; ?>>Second Year</option>
-            <option value="3" <?php if ($filter_year == '3') echo 'selected'; ?>>Third Year</option>
-            <!-- Add more options as needed -->
-        </select>
-        <button type="submit">Search</button>
-    </form>
+<div class="container">
+    <div class="filter-bar">
+        <form method="get" action="student_list.php" class="search-form">
+            <input type="text" name="search_query" placeholder="Search name or student ID..." value="<?php echo htmlspecialchars($search_query); ?>">
+            <select name="filter_branch">
+                <option value="">All Branches</option>
+                <option value="CSE" <?php if ($filter_branch == 'CSE') echo 'selected'; ?>>CSE</option>
+                <option value="Electrical" <?php if ($filter_branch == 'Electrical') echo 'selected'; ?>>Electrical</option>
+                <option value="Civil" <?php if ($filter_branch == 'Civil') echo 'selected'; ?>>Civil</option>
+                <option value="mechanical" <?php if (strtolower($filter_branch) == 'mechanical') echo 'selected'; ?>>Mechanical</option>
+            </select>
+            <select name="filter_year">
+                <option value="">All Years</option>
+                <option value="1" <?php if ($filter_year == '1') echo 'selected'; ?>>1st Year</option>
+                <option value="2" <?php if ($filter_year == '2') echo 'selected'; ?>>2nd Year</option>
+                <option value="3" <?php if ($filter_year == '3') echo 'selected'; ?>>3rd Year</option>
+                <option value="4" <?php if ($filter_year == '4') echo 'selected'; ?>>4th Year</option>
+            </select>
+            <button type="submit" class="btn-search"><i class="fas fa-search"></i> Search</button>
+            <?php if (!empty($search_query) || !empty($filter_branch) || !empty($filter_year)): ?>
+                <a href="student_list.php" style="color: #718096; font-size: 14px; text-decoration: none;">Clear</a>
+            <?php endif; ?>
+        </form>
+        <span style="color: #718096; font-size: 14px; font-weight: 600;">Total Students: <?php echo $total; ?></span>
+    </div>
 
-    <?php if ($total != 0) { ?> 
-        <table class="table-border">
+    <?php if ($total > 0): ?>
+        <table>
             <thead>
                 <tr>
-                    <th width="12%">Full name</th>
-                    <th width="12%">StudentId</th>
-                    <th width="16%">E-mail</th>
-                    <th width="15%">Branch</th>
-                    <th width="4%">Year</th>
-                    <th width="9%">DOB</th>
-                    <th width="6%">Gender</th>
-                    <th width="7%">Phone</th>
-                    <th width="20%">Operation</th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>Email Address</th>
+                    <th>Branch</th>
+                    <th>Year</th>
+                    <th>Gender</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php while ($result = mysqli_fetch_assoc($data)) { ?>
+                <?php while ($row = $data->fetch_assoc()): ?>
                     <tr>
-                        <td><?php echo $result['fname']; ?></td>
-                        <td><?php echo $result['studentid']; ?></td>
-                        <td><?php echo $result['email']; ?></td>
-                        <td><?php echo $result['branch']; ?></td>
-                        <td><?php echo $result['year']; ?></td>
-                        <td><?php echo $result['dob']; ?></td>
-                        <td><?php echo $result['gender']; ?></td>
-                        <td><?php echo $result['phone']; ?></td>
+                        <td><strong><?php echo htmlspecialchars($row['fname']); ?></strong></td>
+                        <td><?php echo htmlspecialchars($row['studentid']); ?></td>
+                        <td><?php echo htmlspecialchars($row['email']); ?></td>
+                        <td><span style="background: #e8f5e9; color: #2e7d32; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 12px;"><?php echo htmlspecialchars($row['branch']); ?></span></td>
+                        <td>Year <?php echo htmlspecialchars($row['year']); ?></td>
+                        <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                        <td><?php echo htmlspecialchars($row['phone']); ?></td>
                         <td>
-                            <a class="update" href="studentList_update.php?studentid=<?php echo $result['studentid']; ?>">Update</a>
-                            <a class="delete" href="Delete.php?studentid=<?php echo $result['studentid']; ?>" onclick="return checkdelete()">Delete</a>
+                            <a href="studentList_update.php?studentid=<?php echo urlencode($row['studentid']); ?>" class="btn-sm btn-edit"><i class="fas fa-edit"></i> Edit</a>
+                            <a href="studentList_delete.php?studentid=<?php echo urlencode($row['studentid']); ?>" class="btn-sm btn-del" onclick="return confirm('Delete this student? This will also remove all their exam submissions.');"><i class="fas fa-trash"></i> Delete</a>
                         </td>
                     </tr>
-                <?php 
-            } ?>
+                <?php endwhile; ?>
             </tbody>
         </table>
-    <?php } else {
-        echo "Record not found";
-    } ?>
-
-    <script>
-        function checkdelete() {
-            return confirm('Are you sure you want to delete this record?');
-        }
-
-        function applyBranchFilter() {
-    // Get the selected branch value
-    var branchFilter = document.getElementById("branchFilter").value;
-    // Redirect to the page with the selected branch filter
-    window.location.href = "selected_student_list.php?teacherid=<?php echo $teacherid; ?>&title_name=<?php echo urlencode($title_name); ?>&branch=" + branchFilter;
-}
-
-    </script>
+    <?php else: ?>
+        <div class="empty-state">
+            <i class="fas fa-user-slash" style="font-size: 40px; color: #cbd5e0; margin-bottom: 10px;"></i>
+            <p>No registered students found matching your search filter.</p>
+        </div>
+    <?php endif; ?>
+</div>
 </body>
 </html>
