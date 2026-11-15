@@ -41,188 +41,414 @@ if(isset($_POST["submit"])){
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Online Examination Registration</title>
-  <style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Registration | Online Examination System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e3c72;
+            --primary-dark: #14284d;
+            --accent: #11998e;
+            --text-dark: #2c3e50;
+            --text-muted: #64748b;
+            --bg-light: #f8fafc;
+            --white: #ffffff;
+            --card-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
         body {
-            background-color: rgb(235, 210, 210);
-            font-family: Arial;
+            background: linear-gradient(135deg, #f0fdf4 0%, #e6f0fa 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-dark);
         }
 
-        .register {
-            padding: 20px;
-            margin: 100px auto;
-            width: 400px;
+        /* Navbar */
+        .navbar {
+            height: 75px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 7%;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--primary);
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .logo i {
+            font-size: 26px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-back {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .nav-back:hover {
+            color: var(--primary);
+        }
+
+        /* Registration Form Area */
+        .auth-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .auth-card {
+            background: var(--white);
+            width: 100%;
+            max-width: 680px;
+            border-radius: 16px;
+            padding: 35px 35px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #edf2f7;
+        }
+
+        /* Role Switcher Tabs */
+        .role-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-            max-width: 400px;
-            background-color: #fff;
+            margin-bottom: 25px;
         }
 
-        .register h2 {
+        .tab-btn {
+            flex: 1;
             text-align: center;
+            padding: 9px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 8px;
+            color: var(--text-muted);
+            transition: var(--transition);
         }
 
-        .register form {
-            margin-top: 20px;
+        .tab-btn.active {
+            background: var(--white);
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
-        .register label {
+        .auth-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(30, 60, 114, 0.08);
+            color: var(--primary);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .auth-header h2 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-dark);
+        }
+
+        .auth-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .full-span {
+            grid-column: span 2;
+        }
+
+        .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #334155;
         }
 
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[ type="date"],
-        input[type="file"] {
-            width: 370px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .input-box {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
-        #gender {
-            width: 390px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .input-box i.input-icon {
+            position: absolute;
+            left: 14px;
+            color: #94a3b8;
+            font-size: 14px;
         }
 
-        select {
-            width: 390px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .input-box input, .input-box select {
+            width: 100%;
+            padding: 11px 14px 11px 38px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text-dark);
+            transition: var(--transition);
+            outline: none;
+            background: #ffffff;
         }
 
-        .register .btn {
-            color: white;
-            width: 140px;
+        .input-box input:focus, .input-box select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 14px;
             cursor: pointer;
-            background-color: #037808;
-            margin-top: 15px;
-            margin-left: 40px;
-            padding: 10px;
-            font-size: large;
-            border-radius: 5px;
+            color: #94a3b8;
+            font-size: 15px;
         }
 
-        .register .btn:hover {
-            background-color: #229027;
+        .toggle-password:hover {
+            color: var(--text-dark);
         }
 
-        .register p {
-            font-size: 18px;
-            margin-top: 15px;
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary) 0%, #2a5298 100%);
+            color: var(--white);
+            border: none;
+            width: 100%;
+            padding: 13px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(30, 60, 114, 0.25);
+            transition: var(--transition);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(30, 60, 114, 0.35);
+        }
+
+        .auth-footer {
             text-align: center;
             margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 14px;
+            color: var(--text-muted);
         }
 
-        .register p a {
+        .auth-footer a {
+            color: var(--primary);
+            font-weight: 700;
             text-decoration: none;
         }
 
-        .register p a:hover {
+        .auth-footer a:hover {
             text-decoration: underline;
         }
 
-        .password-container {
-        position: relative;
-        display: inline-block;
+        @media (max-width: 640px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .full-span {
+                grid-column: span 1;
+            }
         }
-
-        .showPasswordIcon {
-        position: absolute;
-        top: 60%;
-        right: 10px;
-        transform: translateY(-50%);
-        cursor: pointer;
-        }
-  </style>
+    </style>
 </head>
 <body>
 
-<div class="register">
-<form action="#" method="POST" enctype="multipart/form-data">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="MainPage.html" class="logo">
+            <i class="fas fa-graduation-cap"></i>
+            <span>ExamPortal</span>
+        </a>
+        <a href="MainPage.html" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+    </nav>
 
-  <h2>Online Examination Registration</h2>
+    <!-- Registration Area -->
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            
+            <!-- Role Tabs -->
+            <div class="role-tabs">
+                <a href="adm_register.php" class="tab-btn active"><i class="fas fa-chalkboard-teacher"></i> Faculty</a>
+                <a href="student_register.php" class="tab-btn"><i class="fas fa-user-graduate"></i> Student</a>
+            </div>
 
-    <label for="fullname">Full Name:</label>
-    <input type="text" name="fname" class="box" required></br>
+            <div class="auth-header">
+                <div class="role-badge">
+                    <i class="fas fa-user-plus"></i> Faculty Portal
+                </div>
+                <h2>Create Faculty Account</h2>
+                <p>Register as an instructor to conduct exams and author courses</p>
+            </div>
 
-    <label for="teacherid">Teacher ID :</label>
-    <input type="text" name="teacherid" class="box" required></br>
+            <form action="adm_register.php" method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="fname">Full Name</label>
+                        <div class="input-box">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" id="fname" name="fname" placeholder="Dr. John Doe" required>
+                        </div>
+                    </div>
 
-    <label for="email">Email Address:</label>
-    <input type="email"  name="email" placeholder="someone@gmail.com" class="box" required></br>
+                    <div class="form-group">
+                        <label for="teacherid">Teacher ID</label>
+                        <div class="input-box">
+                            <i class="fas fa-id-badge input-icon"></i>
+                            <input type="text" id="teacherid" name="teacherid" placeholder="e.g. T102" required>
+                        </div>
+                    </div>
 
-    <label for="Branch">Branch</label>
-    <select id="Branch" name="Branch" class="box" required>
-      <option value="">Select Branch</option>
-      <option value="CSE">CSE</option>
-      <option value="Electrical">Electrical</option>
-      <option value="Civil">Civil</option>
-      <option value="mechanical">mechanical</option>
-    </select></br>
+                    <div class="form-group full-span">
+                        <label for="email">Email Address</label>
+                        <div class="input-box">
+                            <i class="fas fa-envelope input-icon"></i>
+                            <input type="email" id="email" name="email" placeholder="faculty@university.edu" required>
+                        </div>
+                    </div>
 
-    <label for="dob">Date of Birth:</label>
-    <input type="date"  name="dob" class="box" required>
+                    <div class="form-group">
+                        <label for="Branch">Department / Branch</label>
+                        <div class="input-box">
+                            <i class="fas fa-building input-icon"></i>
+                            <select id="Branch" name="Branch" required>
+                                <option value="">Select Department</option>
+                                <option value="CSE">Computer Science (CSE)</option>
+                                <option value="Electrical">Electrical Engineering</option>
+                                <option value="Civil">Civil Engineering</option>
+                                <option value="Mechanical">Mechanical Engineering</option>
+                            </select>
+                        </div>
+                    </div>
 
-    <label for="gender">Gender:</label>
-    <select id="gender" name="gender" class="box" required>
-      <option value="">Select Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-    </select>
+                    <div class="form-group">
+                        <label for="dob">Date of Birth</label>
+                        <div class="input-box">
+                            <i class="fas fa-calendar-alt input-icon"></i>
+                            <input type="date" id="dob" name="dob" required>
+                        </div>
+                    </div>
 
-    <label for="phone">Contact Number:</label>
-    <input type="text"  name="phone" class="box" required>
-   
-    <div class="password-container">
-        <label>Password:</label>
-        <input type="password" name="password" id="password" class="spassword" minlength="4" placeholder="Password" class="box" required>
-        <img id="passwordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('password', 'passwordIcon')" src="show.png" style="width: 25px; height: 25px;">
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <div class="input-box">
+                            <i class="fas fa-venus-mars input-icon"></i>
+                            <select id="gender" name="gender" required>
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Contact Number</label>
+                        <div class="input-box">
+                            <i class="fas fa-phone input-icon"></i>
+                            <input type="text" id="phone" name="phone" placeholder="10-digit number" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-box">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="password" name="password" minlength="4" placeholder="At least 4 characters" required>
+                            <i class="fas fa-eye toggle-password" onclick="togglePass('password', this)"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cpassword">Confirm Password</label>
+                        <div class="input-box">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="cpassword" name="cpassword" minlength="4" placeholder="Re-enter password" required>
+                            <i class="fas fa-eye toggle-password" onclick="togglePass('cpassword', this)"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" name="submit" class="btn-submit">
+                    <i class="fas fa-user-plus"></i> Complete Registration
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an instructor account? <a href="admin_login.php">Sign In</a>
+            </div>
+        </div>
     </div>
 
-    <div class="password-container">
-        <label>Confirm Password:</label>
-        <input type="password" name="cpassword" id="cpassword" class="spassword" minlength="4" placeholder="Confirm Password" class="box" required>
-        <img id="cpasswordIcon" class="showPasswordIcon" onclick="togglePasswordVisibility('cpassword', 'cpasswordIcon')" src="show.png" style="width: 25px; height: 25px;"> 
-    </div>
-    <br><br>
-    
-    <input type="reset" name="reset"  class="btn" required>
-    <input type="submit" name="submit"  class="btn" required>
-    <p>You don't have account??<a href="admin_login.php">login now</a></p>
-  </form>
-</div>
-
-<script>
-
-   function togglePasswordVisibility(passwordId, iconId) {
-    var passwordInput = document.getElementById(passwordId);
-    var icon = document.getElementById(iconId);
-
-    if (passwordInput.type === "password") {
-        passwordInput.type = "text";
-        icon.src = "hide.png"; // Change the image source to hide icon
-    } else {
-        passwordInput.type = "password";
-        icon.src = "show.png"; // Change the image source to show icon
-    }
-}
-
-</script>
-
+    <script>
+        function togglePass(inputId, icon) {
+            const input = document.getElementById(inputId);
+            const isPassword = input.getAttribute('type') === 'password';
+            input.setAttribute('type', isPassword ? 'text' : 'password');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        }
+    </script>
 </body>
 </html>
