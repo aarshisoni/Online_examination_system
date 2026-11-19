@@ -147,26 +147,45 @@ while ($row = $result_questions->fetch_assoc()) {
 
     <?php if ($totalQuestions > 0): ?>
         <?php foreach ($questions as $q): ?>
+            <?php $isWritten = (isset($q['question_type']) && $q['question_type'] === 'written'); ?>
             <div class="q-card">
                 <div class="q-header">
-                    <span>Question <?php echo $q['question_number']; ?></span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span>Question <?php echo $q['question_number']; ?></span>
+                        <span style="background: <?php echo $isWritten ? '#f3e8ff; color: #7e22ce' : '#e0f2fe; color: #0369a1'; ?>; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                            <?php echo $isWritten ? 'Written / Descriptive' : 'MCQ'; ?>
+                        </span>
+                    </div>
                     <span style="background: #eef2f5; color: #4a5568; padding: 2px 10px; border-radius: 12px; font-size: 12px;"><?php echo $q['marks']; ?> Mark(s)</span>
                 </div>
                 <div class="q-text"><?php echo htmlspecialchars($q['question']); ?></div>
-                <div class="options-list">
-                    <div class="opt-item <?php echo ($q['correct_option'] === 'option1') ? 'opt-correct' : ''; ?>">
-                        <strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?> <?php echo ($q['correct_option'] === 'option1') ? '&#10004; (Correct Answer)' : ''; ?>
+
+                <?php if ($isWritten): ?>
+                    <div style="margin: 12px 0;">
+                        <div style="font-size: 13px; color: #64748b; font-weight: 600; margin-bottom: 6px;"><i class="fas fa-edit"></i> Student Live Answer Area:</div>
+                        <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 6px; padding: 15px; color: #94a3b8; font-style: italic; font-size: 14px;">
+                            [Examinees type their descriptive or short answer here in a multi-line text response box]
+                        </div>
+                        <div style="margin-top: 10px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 10px 14px; color: #155724; font-size: 14px;">
+                            <strong>Model Answer / Solution Guide:</strong> <?php echo nl2br(htmlspecialchars($q['correct_option'])); ?>
+                        </div>
                     </div>
-                    <div class="opt-item <?php echo ($q['correct_option'] === 'option2') ? 'opt-correct' : ''; ?>">
-                        <strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?> <?php echo ($q['correct_option'] === 'option2') ? '&#10004; (Correct Answer)' : ''; ?>
+                <?php else: ?>
+                    <div class="options-list">
+                        <div class="opt-item <?php echo ($q['correct_option'] === 'option1') ? 'opt-correct' : ''; ?>">
+                            <strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?> <?php echo ($q['correct_option'] === 'option1') ? '&#10004; (Correct Answer)' : ''; ?>
+                        </div>
+                        <div class="opt-item <?php echo ($q['correct_option'] === 'option2') ? 'opt-correct' : ''; ?>">
+                            <strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?> <?php echo ($q['correct_option'] === 'option2') ? '&#10004; (Correct Answer)' : ''; ?>
+                        </div>
+                        <div class="opt-item <?php echo ($q['correct_option'] === 'option3') ? 'opt-correct' : ''; ?>">
+                            <strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?> <?php echo ($q['correct_option'] === 'option3') ? '&#10004; (Correct Answer)' : ''; ?>
+                        </div>
+                        <div class="opt-item <?php echo ($q['correct_option'] === 'option4') ? 'opt-correct' : ''; ?>">
+                            <strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?> <?php echo ($q['correct_option'] === 'option4') ? '&#10004; (Correct Answer)' : ''; ?>
+                        </div>
                     </div>
-                    <div class="opt-item <?php echo ($q['correct_option'] === 'option3') ? 'opt-correct' : ''; ?>">
-                        <strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?> <?php echo ($q['correct_option'] === 'option3') ? '&#10004; (Correct Answer)' : ''; ?>
-                    </div>
-                    <div class="opt-item <?php echo ($q['correct_option'] === 'option4') ? 'opt-correct' : ''; ?>">
-                        <strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?> <?php echo ($q['correct_option'] === 'option4') ? '&#10004; (Correct Answer)' : ''; ?>
-                    </div>
-                </div>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
     <?php else: ?>

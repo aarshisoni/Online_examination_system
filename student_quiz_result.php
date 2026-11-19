@@ -34,27 +34,85 @@ while ($row = $result_questions->fetch_assoc()) {
     $q_id = $row['id'];
     $q_marks = intval($row['marks']);
     $total_marks += $q_marks;
+    $q_type = isset($row['question_type']) && $row['question_type'] === 'written' ? 'written' : 'mcq';
 
     $selected_key = 'question_' . $q_id;
     $selected_val = isset($_POST[$selected_key]) ? trim($_POST[$selected_key]) : '';
     $correct_val = trim($row['correct_option']);
 
-    $is_correct = (!empty($selected_val) && $selected_val === $correct_val);
-    if ($is_correct) {
-        $obtained_marks += $q_marks;
-        $correct_count++;
-    }
+    if ($q_type === 'written') {
+        $awarded = 0;
+        $is_correct = false;
 
-    $breakdown[] = [
-        'number' => $row['question_number'],
-        'question' => $row['question'],
-        'selected_opt' => $selected_val,
-        'correct_opt' => $correct_val,
-        'selected_text' => !empty($selected_val) && isset($row[$selected_val]) ? $row[$selected_val] : 'No answer selected',
-        'correct_text' => isset($row[$correct_val]) ? $row[$correct_val] : '',
-        'is_correct' => $is_correct,
-        'marks' => $q_marks
-    ];
+        if (!empty($selected_val)) {
+            // Check exact or case-insensitive match
+            if (strcasecmp($selected_val, $correct_val) === 0) {
+                $awarded = $q_marks;
+                $is_correct = true;
+            } else {
+                // Keyword and substantive content evaluation
+                $model_words = array_filter(preg_split('/\s+/', strtolower($correct_val)));
+                $student_words = array_filter(preg_split('/\s+/', strtolower($selected_val)));
+                $matched_words = array_intersect($student_words, $model_words);
+                $match_ratio = count($model_words) > 0 ? (count($matched_words) / count($model_words)) : 0;
+
+                if ($match_ratio >= 0.4 || strlen($selected_val) >= 25) {
+                    $awarded = $q_marks;
+                    $is_correct = true;
+                } elseif (strlen($selected_val) > 0) {
+                    $awarded = max(1, intval(round($q_marks * 0.5)));
+                    $is_correct = true;
+                }
+            }
+        }
+
+        $obtained_marks += $awarded;
+        if ($is_correct) {
+            $correct_count++;
+        }
+
+        // Store into student_answers table for record and teacher review
+        $stmt_ans = $con->prepare("INSERT INTO student_answers (studentid, teacherid, title_name, question_id, student_answer, marks_awarded) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt_ans->bind_param("sssssi", $studentid, $teacherid, $title_name, $q_id, $selected_val, $awarded);
+        $stmt_ans->execute();
+
+        $breakdown[] = [
+            'number' => $row['question_number'],
+            'type' => 'written',
+            'question' => $row['question'],
+            'selected_text' => !empty($selected_val) ? $selected_val : 'No written answer provided',
+            'correct_text' => $correct_val,
+            'is_correct' => $is_correct,
+            'marks' => $q_marks,
+            'awarded' => $awarded
+        ];
+    } else {
+        $is_correct = (!empty($selected_val) && $selected_val === $correct_val);
+        $awarded = $is_correct ? $q_marks : 0;
+        if ($is_correct) {
+            $obtained_marks += $q_marks;
+            $correct_count++;
+        }
+
+        $selected_text = !empty($selected_val) && isset($row[$selected_val]) ? $row[$selected_val] : 'No option selected';
+        $correct_text = isset($row[$correct_val]) ? $row[$correct_val] : '';
+
+        // Store into student_answers table
+        $stmt_ans = $con->prepare("INSERT INTO student_answers (studentid, teacherid, title_name, question_id, student_answer, marks_awarded) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt_ans->bind_param("sssssi", $studentid, $teacherid, $title_name, $q_id, $selected_text, $awarded);
+        $stmt_ans->execute();
+
+        $breakdown[] = [
+            'number' => $row['question_number'],
+            'type' => 'mcq',
+            'question' => $row['question'],
+            'selected_text' => $selected_text,
+            'correct_text' => $correct_text,
+            'is_correct' => $is_correct,
+            'marks' => $q_marks,
+            'awarded' => $awarded
+        ];
+    }
 }
 
 // Check if already in submit_score
@@ -268,24 +326,31 @@ $passed = ($percentage >= 40);
     <div class="review-card">
         <h3><i class="fas fa-tasks"></i> Question Review & Explanations</h3>
         <?php foreach ($breakdown as $item): ?>
+            <?php $isWritten = ($item['type'] === 'written'); ?>
             <div class="review-item <?php echo $item['is_correct'] ? 'item-correct' : 'item-incorrect'; ?>">
                 <div class="review-q-header">
-                    <span>Question <?php echo $item['number']; ?>: <?php echo htmlspecialchars($item['question']); ?></span>
-                    <span style="font-size: 13px; color: <?php echo $item['is_correct'] ? '#27ae60' : '#e74c3c'; ?>;">
-                        <?php echo $item['is_correct'] ? "+{$item['marks']} Mark(s)" : "0 Marks"; ?>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span>Question <?php echo $item['number']; ?>: <?php echo htmlspecialchars($item['question']); ?></span>
+                        <span style="background: <?php echo $isWritten ? '#f3e8ff; color: #7e22ce' : '#e0f2fe; color: #0369a1'; ?>; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                            <?php echo $isWritten ? 'Written / Descriptive' : 'MCQ'; ?>
+                        </span>
+                    </div>
+                    <span style="font-size: 13px; font-weight: 700; color: <?php echo $item['is_correct'] ? '#27ae60' : '#e74c3c'; ?>;">
+                        <?php echo $item['is_correct'] ? "+{$item['awarded']} / {$item['marks']} Mark(s)" : "0 / {$item['marks']} Marks"; ?>
                     </span>
                 </div>
                 <div class="review-ans ans-your">
-                    <strong>Your Answer:</strong> 
-                    <span style="color: <?php echo $item['is_correct'] ? '#27ae60' : '#e74c3c'; ?>;">
-                        <?php echo htmlspecialchars($item['selected_text']); ?>
-                    </span>
-                </div>
-                <?php if (!$item['is_correct']): ?>
-                    <div class="review-ans ans-correct">
-                        <strong>Correct Answer:</strong> <?php echo htmlspecialchars($item['correct_text']); ?>
+                    <strong>Your Submitted Answer:</strong> 
+                    <div style="margin-top: 4px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; color: <?php echo $item['is_correct'] ? '#155724' : '#721c24'; ?>;">
+                        <?php echo nl2br(htmlspecialchars($item['selected_text'])); ?>
                     </div>
-                <?php endif; ?>
+                </div>
+                <div class="review-ans ans-correct" style="margin-top: 8px;">
+                    <strong><?php echo $isWritten ? 'Model Answer / Reference Solution Guide:' : 'Correct Option:'; ?></strong>
+                    <div style="margin-top: 4px; padding: 8px 12px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; color: #1e4620;">
+                        <?php echo nl2br(htmlspecialchars($item['correct_text'])); ?>
+                    </div>
+                </div>
             </div>
         <?php endforeach; ?>
     </div>

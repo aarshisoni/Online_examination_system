@@ -169,6 +169,27 @@ $studentName = $st_row ? $st_row['fname'] : "Student";
             accent-color: #11998e;
             cursor: pointer;
         }
+        .written-box {
+            margin-top: 10px;
+        }
+        .written-textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            line-height: 1.6;
+            outline: none;
+            transition: all 0.2s;
+            background: #ffffff;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .written-textarea:focus {
+            border-color: #11998e;
+            box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.15);
+        }
         .submit-section {
             background: white;
             padding: 25px;
@@ -218,32 +239,48 @@ $studentName = $st_row ? $st_row['fname'] : "Student";
 
         <?php $q_counter = 1; ?>
         <?php foreach ($questions_data as $q): ?>
+            <?php $isWritten = (isset($q['question_type']) && $q['question_type'] === 'written'); ?>
             <div class="question-card">
                 <div class="q-top">
-                    <span class="q-number">Question <?php echo $q_counter; ?> of <?php echo $totalQuestions; ?></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="q-number">Question <?php echo $q_counter; ?> of <?php echo $totalQuestions; ?></span>
+                        <span style="background: <?php echo $isWritten ? '#f3e8ff; color: #7e22ce' : '#e0f2fe; color: #0369a1'; ?>; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                            <?php echo $isWritten ? 'Written / Descriptive' : 'MCQ'; ?>
+                        </span>
+                    </div>
                     <span class="q-marks-tag"><?php echo $q['marks']; ?> Mark(s)</span>
                 </div>
                 <div class="q-text">
                     <?php echo htmlspecialchars($q['question']); ?>
                 </div>
-                <div class="options-group">
-                    <label class="option-label">
-                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option1">
-                        <span><strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?></span>
-                    </label>
-                    <label class="option-label">
-                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option2">
-                        <span><strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?></span>
-                    </label>
-                    <label class="option-label">
-                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option3">
-                        <span><strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?></span>
-                    </label>
-                    <label class="option-label">
-                        <input type="radio" name="question_<?php echo $q['id']; ?>" value="option4">
-                        <span><strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?></span>
-                    </label>
-                </div>
+
+                <?php if ($isWritten): ?>
+                    <div class="written-box">
+                        <label style="display: block; font-weight: 600; color: #475569; font-size: 13px; margin-bottom: 8px;">
+                            <i class="fas fa-pencil-alt" style="color: #11998e;"></i> Type your written answer below:
+                        </label>
+                        <textarea name="question_<?php echo $q['id']; ?>" class="written-textarea" rows="5" placeholder="Write your complete answer or explanation here..."></textarea>
+                    </div>
+                <?php else: ?>
+                    <div class="options-group">
+                        <label class="option-label">
+                            <input type="radio" name="question_<?php echo $q['id']; ?>" value="option1">
+                            <span><strong>A.</strong> <?php echo htmlspecialchars($q['option1']); ?></span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="question_<?php echo $q['id']; ?>" value="option2">
+                            <span><strong>B.</strong> <?php echo htmlspecialchars($q['option2']); ?></span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="question_<?php echo $q['id']; ?>" value="option3">
+                            <span><strong>C.</strong> <?php echo htmlspecialchars($q['option3']); ?></span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="question_<?php echo $q['id']; ?>" value="option4">
+                            <span><strong>D.</strong> <?php echo htmlspecialchars($q['option4']); ?></span>
+                        </label>
+                    </div>
+                <?php endif; ?>
             </div>
             <?php $q_counter++; ?>
         <?php endforeach; ?>

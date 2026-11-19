@@ -9,15 +9,16 @@ A full-stack, responsive web application for conducting and managing online test
 ### 👨‍🏫 Faculty / Teacher Panel
 - **Multi-Faculty Architecture**: Multiple teachers can create accounts, author courses, and conduct examinations independently.
 - **Course & Exam Authoring**: Create new examinations, define question banks with customizable marks per question, and preview tests before publishing.
+- **Hybrid Question Formats**: Full support for both **Multiple Choice Questions (MCQ)** and **Written / Descriptive / Short Answer questions** with model solutions.
 - **Targeted Student Assignment**: Selectively assign exams to specific students, branches, and academic years.
-- **Real-Time Gradebook & Analytics**: View student submissions, scores obtained, percentages, class averages, and pass/fail statuses.
+- **Real-Time Gradebook & Paper Review**: View student submissions, scores obtained, and inspect full submitted answer sheets (including student written answers) via `view_student_submission.php`.
 - **Directory Management**: Search and filter students and faculty members by department and year.
 - **Account Security & Password Management**: Self-service change password functionality with security validation and visibility toggles.
 
 ### 👨‍🎓 Student / Examinee Panel
 - **Personalized Exam Dashboard**: View all live examinations assigned by course instructors.
-- **Live Test Portal**: Clean, distraction-free examination interface with question counters and instant options.
-- **Immediate Evaluation**: Instant grading upon submission with full question-by-question breakdown showing correct vs. submitted answers.
+- **Live Test Portal**: Clean, distraction-free examination interface supporting both MCQ radio selectors and multi-line descriptive text response areas.
+- **Immediate Evaluation**: Instant grading upon submission with full question-by-question breakdown showing correct vs. submitted answers (including written responses).
 - **Performance History**: Complete record of all completed exams and scores over time.
 - **One-Time Submission Protection**: Enforces examination integrity by preventing duplicate submissions.
 - **Account Security & Password Management**: Dedicated change password portal to update credentials securely anytime.
@@ -90,6 +91,7 @@ Online_examination_system/
 ├── selected_student_list.php    # Manage assigned students
 ├── display_quize.php            # Faculty exam listing & actions
 ├── student_score.php            # Faculty gradebook & results view
+├── view_student_submission.php  # Faculty review of student answers & written scripts
 ├── admin_list.php               # Faculty directory
 ├── admin_profile.php            # Faculty profile settings
 ├── admin_change_password.php    # Faculty password change portal

@@ -37,18 +37,19 @@ CREATE TABLE IF NOT EXISTS `quiz_title` (
     `title_name` VARCHAR(200) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Quiz Questions Table
+-- Quiz Questions Table (Supports both MCQ and Written/Descriptive Questions)
 CREATE TABLE IF NOT EXISTS `quiz_questions` (
     `id` INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
     `teacherid` VARCHAR(255) NOT NULL,
     `title_name` VARCHAR(255) NOT NULL,
     `question_number` INT(11) NOT NULL,
     `question` TEXT NOT NULL,
-    `option1` TEXT NOT NULL,
-    `option2` TEXT NOT NULL,
-    `option3` TEXT NOT NULL,
-    `option4` TEXT NOT NULL,
-    `correct_option` VARCHAR(200) NOT NULL,
+    `question_type` VARCHAR(20) NOT NULL DEFAULT 'mcq',
+    `option1` TEXT DEFAULT NULL,
+    `option2` TEXT DEFAULT NULL,
+    `option3` TEXT DEFAULT NULL,
+    `option4` TEXT DEFAULT NULL,
+    `correct_option` TEXT NOT NULL,
     `marks` INT(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -67,6 +68,17 @@ CREATE TABLE IF NOT EXISTS `submit_score` (
     `teacherid` VARCHAR(200) NOT NULL,
     `title_name` VARCHAR(200) NOT NULL,
     `marks` INT(200) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Student Detailed Answers (Supports written essays, short answers & MCQ selections)
+CREATE TABLE IF NOT EXISTS `student_answers` (
+    `id` INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    `studentid` VARCHAR(200) NOT NULL,
+    `teacherid` VARCHAR(200) NOT NULL,
+    `title_name` VARCHAR(200) NOT NULL,
+    `question_id` INT(11) NOT NULL,
+    `student_answer` TEXT DEFAULT NULL,
+    `marks_awarded` INT(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Sample Demo Records for immediate testing:

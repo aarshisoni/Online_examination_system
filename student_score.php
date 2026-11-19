@@ -262,6 +262,7 @@ $avg_marks = $total_subs > 0 ? round($sum_marks / $total_subs, 1) : 0;
                     <th>Score / Total</th>
                     <th>Percentage</th>
                     <th>Status</th>
+                    <th style="text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -282,6 +283,14 @@ $avg_marks = $total_subs > 0 ? round($sum_marks / $total_subs, 1) : 0;
                             <span class="score-pill <?php echo $isPass ? 'score-pass' : 'score-fail'; ?>">
                                 <?php echo $isPass ? 'Passed' : 'Needs Improvement'; ?>
                             </span>
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="view_student_submission.php?studentid=<?php echo urlencode($row['studentid']); ?>&title_name=<?php echo urlencode($row['title_name']); ?>" 
+                               class="nav-btn" 
+                               style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; font-size: 12px; border-radius: 6px; font-weight: 600;"
+                               target="_blank">
+                                <i class="fas fa-file-alt"></i> View Paper
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

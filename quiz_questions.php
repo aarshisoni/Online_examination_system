@@ -35,15 +35,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (isset($_POST['add_question'])) {
         $question_number = intval($_POST['question_number']);
         $question = trim($_POST['question']);
-        $option1 = trim($_POST['option1']);
-        $option2 = trim($_POST['option2']);
-        $option3 = trim($_POST['option3']);
-        $option4 = trim($_POST['option4']);
-        $correct_option = trim($_POST['correct_option']);
+        $question_type = isset($_POST['question_type']) && $_POST['question_type'] === 'written' ? 'written' : 'mcq';
         $marks = intval($_POST['marks']);
 
-        $stmt_ins = $con->prepare("INSERT INTO quiz_questions (teacherid, title_name, question_number, question, option1, option2, option3, option4, correct_option, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt_ins->bind_param("ssissssssi", $teacherid, $title_name, $question_number, $question, $option1, $option2, $option3, $option4, $correct_option, $marks);
+        if ($question_type === 'written') {
+            $option1 = "";
+            $option2 = "";
+            $option3 = "";
+            $option4 = "";
+            $correct_option = isset($_POST['written_model_answer']) ? trim($_POST['written_model_answer']) : '';
+        } else {
+            $option1 = isset($_POST['option1']) ? trim($_POST['option1']) : '';
+            $option2 = isset($_POST['option2']) ? trim($_POST['option2']) : '';
+            $option3 = isset($_POST['option3']) ? trim($_POST['option3']) : '';
+            $option4 = isset($_POST['option4']) ? trim($_POST['option4']) : '';
+            $correct_option = isset($_POST['correct_option']) ? trim($_POST['correct_option']) : '';
+        }
+
+        $stmt_ins = $con->prepare("INSERT INTO quiz_questions (teacherid, title_name, question_number, question, option1, option2, option3, option4, correct_option, marks, question_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt_ins->bind_param("ssissssssis", $teacherid, $title_name, $question_number, $question, $option1, $option2, $option3, $option4, $correct_option, $marks, $question_type);
 
         if ($stmt_ins->execute()) {
             $alert_msg = "Question added successfully!";
@@ -469,7 +479,7 @@ $next_q_num = $result_questions->num_rows + 1;
                     <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Question #<?php echo $next_q_num; ?></span>
                 </div>
 
-                <form method="post" action="quiz_questions.php?teacherid=<?php echo urlencode($teacherid); ?>&title_name=<?php echo urlencode($title_name); ?>">
+                <form method="post" action="quiz_questions.php?teacherid=<?php echo urlencode($teacherid); ?>&title_name=<?php echo urlencode($title_name); ?>" onsubmit="return validateQuestionForm();">
                     <input type="hidden" name="add_question" value="1">
                     <div class="form-grid">
                         <div>
@@ -481,34 +491,54 @@ $next_q_num = $result_questions->num_rows + 1;
                             <input type="number" id="marks" name="marks" value="2" min="1" required>
                         </div>
                         <div class="full-width">
-                            <label for="question">Question Text</label>
-                            <input type="text" id="question" name="question" placeholder="Enter question description..." required>
-                        </div>
-                        <div>
-                            <label for="option1">Option A</label>
-                            <input type="text" id="option1" name="option1" placeholder="First option" required>
-                        </div>
-                        <div>
-                            <label for="option2">Option B</label>
-                            <input type="text" id="option2" name="option2" placeholder="Second option" required>
-                        </div>
-                        <div>
-                            <label for="option3">Option C</label>
-                            <input type="text" id="option3" name="option3" placeholder="Third option" required>
-                        </div>
-                        <div>
-                            <label for="option4">Option D</label>
-                            <input type="text" id="option4" name="option4" placeholder="Fourth option" required>
+                            <label for="question_type">Question Format / Evaluation Type</label>
+                            <select id="question_type" name="question_type" onchange="toggleQuestionType()" required>
+                                <option value="mcq">Multiple Choice Question (MCQ - Single Correct)</option>
+                                <option value="written">Written / Descriptive / Short Answer Question</option>
+                            </select>
                         </div>
                         <div class="full-width">
-                            <label for="correct_option">Select the Correct Option</label>
-                            <select id="correct_option" name="correct_option" required>
-                                <option value="">-- Choose Correct Answer --</option>
-                                <option value="option1">Option A</option>
-                                <option value="option2">Option B</option>
-                                <option value="option3">Option C</option>
-                                <option value="option4">Option D</option>
-                            </select>
+                            <label for="question">Question Text</label>
+                            <input type="text" id="question" name="question" placeholder="Enter question description or problem statement..." required>
+                        </div>
+
+                        <!-- MCQ Fields Container -->
+                        <div id="mcq_fields_container" style="display: contents;">
+                            <div>
+                                <label for="option1">Option A</label>
+                                <input type="text" id="option1" name="option1" placeholder="First option">
+                            </div>
+                            <div>
+                                <label for="option2">Option B</label>
+                                <input type="text" id="option2" name="option2" placeholder="Second option">
+                            </div>
+                            <div>
+                                <label for="option3">Option C</label>
+                                <input type="text" id="option3" name="option3" placeholder="Third option">
+                            </div>
+                            <div>
+                                <label for="option4">Option D</label>
+                                <input type="text" id="option4" name="option4" placeholder="Fourth option">
+                            </div>
+                            <div class="full-width">
+                                <label for="correct_option">Select the Correct Option</label>
+                                <select id="correct_option" name="correct_option">
+                                    <option value="">-- Choose Correct Answer --</option>
+                                    <option value="option1">Option A</option>
+                                    <option value="option2">Option B</option>
+                                    <option value="option3">Option C</option>
+                                    <option value="option4">Option D</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Written / Descriptive Fields Container -->
+                        <div id="written_fields_container" class="full-width" style="display: none;">
+                            <label for="written_model_answer">Model Answer / Key Points / Evaluation Guide</label>
+                            <textarea id="written_model_answer" name="written_model_answer" rows="3" placeholder="Enter reference solution, expected keywords, or key points for this written question..."></textarea>
+                            <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 4px;">
+                                <i class="fas fa-info-circle"></i> Students will be presented with a multi-line text response box during their live exam.
+                            </span>
                         </div>
                     </div>
                     <button type="submit" class="btn-submit">
@@ -527,17 +557,34 @@ $next_q_num = $result_questions->num_rows + 1;
                 <?php if ($result_questions->num_rows > 0): ?>
                     <ul class="question-list">
                         <?php while ($row = $result_questions->fetch_assoc()): ?>
+                            <?php $isWritten = (isset($row['question_type']) && $row['question_type'] === 'written'); ?>
                             <li class="question-item">
                                 <div class="q-header">
-                                    <span class="q-title">Q<?php echo $row['question_number']; ?>: <?php echo htmlspecialchars($row['question']); ?></span>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span class="q-title">Q<?php echo $row['question_number']; ?>: <?php echo htmlspecialchars($row['question']); ?></span>
+                                        <span class="badge" style="background: <?php echo $isWritten ? '#f3e8ff; color: #7e22ce' : '#e0f2fe; color: #0369a1'; ?>; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+                                            <i class="fas <?php echo $isWritten ? 'fa-pen-nib' : 'fa-list-ul'; ?>"></i> <?php echo $isWritten ? 'Written / Descriptive' : 'MCQ'; ?>
+                                        </span>
+                                    </div>
                                     <span class="q-marks"><?php echo $row['marks']; ?> Mark(s)</span>
                                 </div>
-                                <div class="q-options">
-                                    <div class="opt <?php echo ($row['correct_option'] === 'option1') ? 'correct' : ''; ?>">A: <?php echo htmlspecialchars($row['option1']); ?></div>
-                                    <div class="opt <?php echo ($row['correct_option'] === 'option2') ? 'correct' : ''; ?>">B: <?php echo htmlspecialchars($row['option2']); ?></div>
-                                    <div class="opt <?php echo ($row['correct_option'] === 'option3') ? 'correct' : ''; ?>">C: <?php echo htmlspecialchars($row['option3']); ?></div>
-                                    <div class="opt <?php echo ($row['correct_option'] === 'option4') ? 'correct' : ''; ?>">D: <?php echo htmlspecialchars($row['option4']); ?></div>
-                                </div>
+
+                                <?php if ($isWritten): ?>
+                                    <div style="margin: 12px 0; padding: 12px 16px; background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 8px;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #7e22ce; margin-bottom: 4px;">
+                                            <i class="fas fa-key"></i> Model Answer / Reference Solution:
+                                        </div>
+                                        <div style="font-size: 14px; color: #3b0764;"><?php echo nl2br(htmlspecialchars($row['correct_option'])); ?></div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="q-options">
+                                        <div class="opt <?php echo ($row['correct_option'] === 'option1') ? 'correct' : ''; ?>">A: <?php echo htmlspecialchars($row['option1']); ?></div>
+                                        <div class="opt <?php echo ($row['correct_option'] === 'option2') ? 'correct' : ''; ?>">B: <?php echo htmlspecialchars($row['option2']); ?></div>
+                                        <div class="opt <?php echo ($row['correct_option'] === 'option3') ? 'correct' : ''; ?>">C: <?php echo htmlspecialchars($row['option3']); ?></div>
+                                        <div class="opt <?php echo ($row['correct_option'] === 'option4') ? 'correct' : ''; ?>">D: <?php echo htmlspecialchars($row['option4']); ?></div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <form method="post" onsubmit="return confirm('Delete this question?');">
                                     <input type="hidden" name="delete_question" value="<?php echo $row['id']; ?>">
                                     <button type="submit" class="btn-delete"><i class="fas fa-trash"></i> Delete Question</button>
@@ -551,5 +598,52 @@ $next_q_num = $result_questions->num_rows + 1;
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleQuestionType() {
+            const type = document.getElementById('question_type').value;
+            const mcqBox = document.getElementById('mcq_fields_container');
+            const writtenBox = document.getElementById('written_fields_container');
+
+            if (type === 'written') {
+                mcqBox.style.display = 'none';
+                writtenBox.style.display = 'block';
+                document.getElementById('option1').required = false;
+                document.getElementById('option2').required = false;
+                document.getElementById('correct_option').required = false;
+                document.getElementById('written_model_answer').required = true;
+            } else {
+                mcqBox.style.display = 'contents';
+                writtenBox.style.display = 'none';
+                document.getElementById('option1').required = true;
+                document.getElementById('option2').required = true;
+                document.getElementById('correct_option').required = true;
+                document.getElementById('written_model_answer').required = false;
+            }
+        }
+
+        function validateQuestionForm() {
+            const type = document.getElementById('question_type').value;
+            if (type === 'mcq') {
+                const opt1 = document.getElementById('option1').value.trim();
+                const opt2 = document.getElementById('option2').value.trim();
+                const corr = document.getElementById('correct_option').value.trim();
+                if (!opt1 || !opt2 || !corr) {
+                    alert('Please enter at least Option A and Option B, and select the correct option for this MCQ.');
+                    return false;
+                }
+            } else {
+                const modelAns = document.getElementById('written_model_answer').value.trim();
+                if (!modelAns) {
+                    alert('Please provide a Model Answer or reference keywords for this written question.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Initialize on load
+        toggleQuestionType();
+    </script>
 </body>
 </html>
