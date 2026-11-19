@@ -343,6 +343,7 @@ $recent_quizzes = $recent_stmt->get_result();
         <a href="student_list.php" class="nav-item"><i class="fas fa-user-graduate"></i> Manage Students</a>
         <a href="admin_list.php" class="nav-item"><i class="fas fa-chalkboard-teacher"></i> Faculty Directory</a>
         <a href="admin_profile.php" class="nav-item"><i class="fas fa-user-cog"></i> My Profile</a>
+        <a href="admin_change_password.php" class="nav-item"><i class="fas fa-key"></i> Change Password</a>
 
         <a href="admin_logout.php" class="nav-item logout-item"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>

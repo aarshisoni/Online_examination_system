@@ -12,6 +12,7 @@ A full-stack, responsive web application for conducting and managing online test
 - **Targeted Student Assignment**: Selectively assign exams to specific students, branches, and academic years.
 - **Real-Time Gradebook & Analytics**: View student submissions, scores obtained, percentages, class averages, and pass/fail statuses.
 - **Directory Management**: Search and filter students and faculty members by department and year.
+- **Account Security & Password Management**: Self-service change password functionality with security validation and visibility toggles.
 
 ### 👨‍🎓 Student / Examinee Panel
 - **Personalized Exam Dashboard**: View all live examinations assigned by course instructors.
@@ -19,6 +20,7 @@ A full-stack, responsive web application for conducting and managing online test
 - **Immediate Evaluation**: Instant grading upon submission with full question-by-question breakdown showing correct vs. submitted answers.
 - **Performance History**: Complete record of all completed exams and scores over time.
 - **One-Time Submission Protection**: Enforces examination integrity by preventing duplicate submissions.
+- **Account Security & Password Management**: Dedicated change password portal to update credentials securely anytime.
 
 ---
 
@@ -90,6 +92,7 @@ Online_examination_system/
 ├── student_score.php            # Faculty gradebook & results view
 ├── admin_list.php               # Faculty directory
 ├── admin_profile.php            # Faculty profile settings
+├── admin_change_password.php    # Faculty password change portal
 ├── admin_logout.php             # Faculty session termination
 │
 ├── student_register.php         # Student registration
@@ -101,6 +104,7 @@ Online_examination_system/
 ├── student_quiz_result.php      # Scorecard & answer key review
 ├── student_score_dashboard.php  # Student past exam history & marks
 ├── student_profile.php          # Student profile settings
+├── student_change_password.php  # Student password change portal
 ├── student_logout.php           # Student session termination
 │
 ├── student_list.php             # Student administration directory

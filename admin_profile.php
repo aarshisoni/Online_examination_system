@@ -123,9 +123,14 @@ $phone = $row['phone'];
 <body>
 <header>
     <h2><i class="fas fa-user-circle"></i> Faculty Profile</h2>
-    <a href="admin_dashboard.php" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; font-weight: 500;">
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
-    </a>
+    <div style="display: flex; gap: 10px;">
+        <a href="admin_change_password.php" style="color: white; text-decoration: none; background: #e67e22; padding: 8px 16px; border-radius: 6px; font-weight: 500;">
+            <i class="fas fa-key"></i> Change Password
+        </a>
+        <a href="admin_dashboard.php" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; font-weight: 500;">
+            <i class="fas fa-arrow-left"></i> Dashboard
+        </a>
+    </div>
 </header>
 
 <div class="container">

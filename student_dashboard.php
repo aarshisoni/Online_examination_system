@@ -324,6 +324,7 @@ while ($row = $quizzes_result->fetch_assoc()) {
         <a href="student_quiz_dashboard.php" class="nav-item"><i class="fas fa-clipboard-list"></i> Live Examinations</a>
         <a href="student_score_dashboard.php" class="nav-item"><i class="fas fa-trophy"></i> My Scorecard & History</a>
         <a href="student_profile.php" class="nav-item"><i class="fas fa-user-circle"></i> My Profile</a>
+        <a href="student_change_password.php" class="nav-item"><i class="fas fa-key"></i> Change Password</a>
 
         <a href="student_logout.php" class="nav-item logout-item"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
